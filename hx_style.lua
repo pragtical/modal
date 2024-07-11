@@ -223,6 +223,7 @@ modal.keymaps = {
     ["<space>f"] = "core:find-file",
     ["<space>F"] = "core:open-file",
     ["<space>P"] = "core:open-project-folder",
+    ["<space>b"] = "tab-switcher:tab-list", -- need plugin tab-switcher
 
     -- WINDOWS operations
     ["<f11>"] = "core:toogle-full-screen",
@@ -291,5 +292,44 @@ modal.on_key_callbacks = {
   [2] = modal.on_key_passtrought,
   [3] = modal.on_key_command_only,
 }
+
+
+local helpers = {
+  ["<space>"] = {
+    { "f", "open project file picker" },
+    { "F", "open file picker" },
+    { "P", "open project folder" },
+    { "b", "open buffer picker" },
+    { "s", "show symbol picker" },
+    { "S", "show project symbol picer" },
+    { "d", "show document diagnostic picker" },
+    { "D", "show project diagnostic picker" },
+    { "w", "window mode" },
+    { "k", "show symbol information" },
+    { "r", "rename symbol" },
+  },
+  ["<space>w"] = {
+    { "q",     "close tab" },
+    { "v",     "vertical right split" },
+    { "s",     "horizontal down split" },
+    { "left",  "jump to left split" },
+    { "right", "jump to right split" },
+    { "up",    "jump to split above" },
+    { "down",  "jump to split below" },
+  },
+  ["g"] = {
+    { "g", "Goto file start" },
+    { "e", "Goto file end" },
+    { "h", "Goto line start" },
+    { "l", "Goto line end" },
+    { "_", "Goto first character of line" },
+    { "d", "Goto definition" },
+    { "i", "Goto implementation" },
+    { "r", "Goto references" },
+  }
+}
+
+modal.helpers[1] = helpers
+modal.helpers[3] = helpers
 
 return modal

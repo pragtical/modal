@@ -7,6 +7,8 @@ local StatusView = require "core.statusview"
 local CommandView = require "core.commandview"
 local DocView = require "core.docview"
 
+require "plugins.modal.helper"
+
 local modal = {}
 core.modal = modal
 
@@ -22,10 +24,14 @@ modal.carets = {}
 modal.keystrokes = {}
 modal.helpers = {}
 
-modal.config = {
-  ["show_help"] = false,
-}
+modal.active_help = nil
 
+modal.config = {
+  ["helper"] ={
+    ["show"] = true,
+    ["alignement"] = "RIGHT",
+  }
+}
 
 function modal.go_to_mode(mode)
   return function()
@@ -159,7 +165,15 @@ function modal.redo_command()
   end
 end
 
+function modal.eval_helper(seq)
+  local mode= get_mode()
+  if modal.config.helper.show == true and modal.helpers[mode] ~= nil then
+    modal.active_help = modal.helpers[mode][seq]
+  end
+end
+
 function modal.eval_current_strokes()
+  modal.active_help = nil
   local N_repeat = ''
   local seq = ''
   local cmd = nil
@@ -185,8 +199,9 @@ function modal.eval_current_strokes()
   elseif not modal.is_partial_command(seq) then
     cmd = nil
     modal.keystrokes = {}
+  else
+    modal.eval_helper(seq)
   end
-
   return cmd ~= nil
 end
 
