@@ -26,10 +26,13 @@ modal.helpers = {}
 
 modal.active_help = nil
 
+modal.align = {
+  LEFT = 1, CENTER=2, RIGHT= 3
+}
 modal.config = {
   ["helper"] ={
     ["show"] = true,
-    ["alignement"] = "RIGHT",
+    ["alignement"] = modal.align.RIGHT,
   }
 }
 

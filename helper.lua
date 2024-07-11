@@ -6,10 +6,17 @@ local RootView = require "core.rootview"
 local padding = 10
 local margin = 10
 
+style["helper"] = {
+  ["background"] = { 0, 0, 0, 200 },
+  ["text"] = { 255, 255, 255, 220 },
+}
+
 local function pos(win_size, width, height)
   local y = win_size.y - margin - padding * 2 - height
-  if core.modal.config.helper.alignement == "LEFT" then
+  if core.modal.config.helper.alignement == core.modal.align.RIGHT then
     return margin, y
+  elseif core.modal.config.helper.alignement == core.modal.align.CENTER then
+    return win_size.x / 2 - width / 2 - padding, y
   else
     return win_size.x - margin - padding * 2 - width, y
   end
@@ -42,16 +49,17 @@ function RootView:draw(...)
       end
     end
 
-    local x , y = pos(self.size, box_w, box_h)
+    local x, y = pos(self.size, box_w, box_h)
     local w = box_w + padding * 2
     local h = box_h + padding * 2
     core.redraw = true
-    renderer.draw_rect(x, y, w, h, { 0, 0, 0, 200 })
+    local bg = style.helper.background
+    local fg = style.helper.text
+    renderer.draw_rect(x, y, w, h, bg)
     x = x + padding
     y = y + padding
     for _, line in ipairs(lines) do
-      renderer.draw_text(font, line, x, y,
-        { 255, 255, 255, 200 })
+      renderer.draw_text(font, line, x, y, fg)
       y = y + font:get_height()
     end
   end
