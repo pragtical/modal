@@ -6,25 +6,20 @@ local style = require "core.style"
 local StatusView = require "core.statusview"
 local CommandView = require "core.commandview"
 local DocView = require "core.docview"
-
-require "plugins.modal.helper"
+local RootView = require "core.rootview"
 
 local modal = {}
 core.modal = modal
 
 modal.base_mode = 0
 modal.modes = {}
-modal.last_command = nil
 
 modal.keymaps = {}
 modal.on_key_callbacks = {}
-
 modal.caret_style = { NORMAL = 0, BAR = 1, }
 modal.carets = {}
-modal.keystrokes = {}
 modal.helpers = {}
 
-modal.active_help = nil
 
 modal.align = {
   LEFT = 1, CENTER = 2, RIGHT = 3
@@ -35,6 +30,18 @@ modal.config = {
     ["alignement"] = modal.align.RIGHT,
   }
 }
+-- Helper styling
+style["helper"] = {
+  ["background"] = { 0, 0, 0, 200 },
+  ["text"] = { 255, 255, 255, 220 },
+  ["padding"] = 10,
+  ["margin"] = 10,
+}
+
+local internal =  {}
+internal.last_command = nil
+internal.keystrokes = {}
+internal.active_help = nil
 
 function modal.go_to_mode(mode)
   return function()
@@ -176,36 +183,36 @@ local function eval_cmd(cmd)
 end
 
 function modal.redo_command()
-  if modal.last_command ~= nil then
-    eval_cmd(modal.last_command)
+  if internal.last_command ~= nil then
+    eval_cmd(internal.last_command)
   end
 end
 
 function modal.eval_helper(seq)
   local mode = get_mode()
   if modal.config.helper.show == true and modal.helpers[mode] ~= nil then
-    modal.active_help = modal.helpers[mode][seq]
+    internal.active_help = modal.helpers[mode][seq]
   end
 end
 
 function modal.eval_current_strokes()
-  modal.active_help = nil
+  internal.active_help = nil
   local N_repeat = ''
   local seq = ''
   local cmd = nil
-  for i = 1, #modal.keystrokes do
-    if #seq == 0 and is_number(modal.keystrokes[i]) then
-      N_repeat = N_repeat .. modal.keystrokes[i]
+  for i = 1, #internal.keystrokes do
+    if #seq == 0 and is_number(internal.keystrokes[i]) then
+      N_repeat = N_repeat .. internal.keystrokes[i]
     else
-      seq = seq .. modal.keystrokes[i]
+      seq = seq .. internal.keystrokes[i]
     end
   end
   local mode = get_mode()
   if modal.keymaps[mode][seq] ~= nil then
     cmd = modal.keymaps[mode][seq]
     local N = 1
-    modal.keystrokes = {}
-    modal.last_command = seq
+    internal.keystrokes = {}
+    internal.last_command = seq
     if #N_repeat > 0 then
       N = math.floor(tonumber(N_repeat) or error("String is not a number"))
     end
@@ -214,7 +221,7 @@ function modal.eval_current_strokes()
     end
   elseif not modal.is_partial_command(seq) then
     cmd = nil
-    modal.keystrokes = {}
+    internal.keystrokes = {}
   else
     modal.eval_helper(seq)
   end
@@ -238,7 +245,7 @@ modal.on_key_pressed__orig = keymap.on_key_pressed
 function modal.on_key_passtrought(k, ...)
   local key = modal.convert_stroke(k)
   if key and #key > 1 then
-    modal.keystrokes[#modal.keystrokes + 1] = key
+    internal.keystrokes[#internal.keystrokes + 1] = key
     if modal.eval_current_strokes() then
       return true
     end
@@ -252,7 +259,7 @@ function modal.on_key_command_only(k, ...)
   end
   local key = modal.convert_stroke(k)
   if key and #key > 0 then
-    modal.keystrokes[#modal.keystrokes + 1] = key
+    internal.keystrokes[#internal.keystrokes+1] = key
     modal.eval_current_strokes()
   end
   return true
@@ -325,6 +332,60 @@ if core.status_view:get_item("status:mode") == nil then
     tooltip = "mode",
     separator = core.status_view.separator2
   })
+end
+
+local function pos(win_size, width, height)
+  local y = win_size.y - style.helper.margin - style.helper.padding * 2 - height
+  if modal.config.helper.alignement == modal.align.RIGHT then
+    return style.helper.margin, y
+  elseif modal.config.helper.alignement == modal.align.CENTER then
+    return win_size.x / 2 - width / 2 - style.helper.padding, y
+  else
+    return win_size.x - style.helper.margin - style.helper.padding * 2 - width, y
+  end
+end
+
+local function spaces(key_len, spacing)
+  local res = ''
+  for _ = 1, spacing - key_len do
+    res = res .. ' '
+  end
+  return res
+end
+
+local rvDraw = RootView.draw
+function RootView:draw(...)
+  rvDraw(self, ...)
+  if internal.active_help ~= nil then
+    local font = style.code_font
+    local lines = {}
+    local box_h = 0
+    local box_w = 0
+    for _, kv in ipairs(internal.active_help) do
+      local line = kv[1] .. spaces(#kv[1], 8) .. kv[2]
+      local line_w = font:get_width(line)
+      lines[#lines + 1] = line
+      box_h = box_h + font:get_height()
+
+      if line_w > box_w then
+        box_w = line_w
+      end
+    end
+
+    local x, y = pos(self.size, box_w, box_h)
+    local w = box_w + style.helper.padding * 2
+    local h = box_h + style.helper.padding * 2
+    core.redraw = true
+    local bg = style.helper.background
+    local fg = style.helper.text
+    renderer.draw_rect(x, y, w, h, bg)
+    x = x + style.helper.padding
+    y = y + style.helper.padding
+    for _, line in ipairs(lines) do
+      renderer.draw_text(font, line, x, y, fg)
+      y = y + font:get_height()
+    end
+  end
 end
 
 core.log("MODAL Ready")
