@@ -253,7 +253,7 @@ modal.keymaps = {
     ["<ESC>"] = modal.go_to_mode(mode.NOR),
   },
   [mode.SEL] = {
-    ["i"] = modal.go_to_mode(mode.VIS),
+    ["i"] = modal.go_to_mode(mode.INS),
     ["v"] = modal.go_to_mode(mode.NOR),
     ["<ESC>"] = modal.go_to_mode(mode.NOR),
   },
@@ -284,16 +284,13 @@ local sel_movements = {
 modal.keymaps[mode.SEL] = concat(modal.keymaps[mode.NOR], modal.keymaps[mode.SEL])
 modal.keymaps[mode.SEL] = concat(modal.keymaps[mode.SEL], sel_movements)
 
-modal.carets = {
-  modal.caret_style.BAR,
-  modal.caret_style.NORMAL,
-  modal.caret_style.BAR,
-}
-modal.on_key_callbacks = {
-  [1] = modal.on_key_command_only,
-  [2] = modal.on_key_passtrought,
-  [3] = modal.on_key_command_only,
-}
+modal.carets[mode.NOR] = modal.caret_style.BAR
+modal.carets[mode.INS] = modal.caret_style.NORMAL
+modal.carets[mode.SEL] = modal.caret_style.BAR
+
+modal.on_key_callbacks[mode.NOR] = modal.on_key_command_only
+modal.on_key_callbacks[mode.SEL] = modal.on_key_command_only
+modal.on_key_callbacks[mode.INS] = modal.on_key_passtrought
 
 
 local helpers = {
