@@ -27,10 +27,10 @@ modal.helpers = {}
 modal.active_help = nil
 
 modal.align = {
-  LEFT = 1, CENTER=2, RIGHT= 3
+  LEFT = 1, CENTER = 2, RIGHT = 3
 }
 modal.config = {
-  ["helper"] ={
+  ["helper"] = {
     ["show"] = true,
     ["alignement"] = modal.align.RIGHT,
   }
@@ -101,6 +101,19 @@ local function get_mode()
   end
 end
 
+local function get_mode_str()
+  local mode = get_mode()
+  if mode == nil or mode == 0 then
+    return nil
+  end
+  for k, v in pairs(modal.modes) do
+    if v == mode then
+      return k
+    end
+  end
+  return nil
+end
+
 local function apply_mods(key)
   local shift = key_modifiers['left shift'] or key_modifiers['right shift']
   if shift and shift_keys[key] then
@@ -169,7 +182,7 @@ function modal.redo_command()
 end
 
 function modal.eval_helper(seq)
-  local mode= get_mode()
+  local mode = get_mode()
   if modal.config.helper.show == true and modal.helpers[mode] ~= nil then
     modal.active_help = modal.helpers[mode][seq]
   end
@@ -301,11 +314,11 @@ if core.status_view:get_item("status:mode") == nil then
     name = "status:mode",
     alignment = StatusView.Item.LEFT,
     get_item = function()
-      local mode = get_mode()
-      if mode == 0 or modal.modes[mode] == nil then
+      local mode_str = get_mode_str()
+      if mode_str == nil then
         return { "NO MODE", }
       else
-        return { modal.modes[mode], }
+        return { mode_str, }
       end
     end,
     position = 1,

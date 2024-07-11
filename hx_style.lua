@@ -158,7 +158,7 @@ end
 local mode = { NOR = 1, INS = 2, SEL = 3 }
 modal.base_mode = mode.NOR
 
-modal.modes = { "NOR", "INS", "SEL" }
+modal.modes = mode -- { "NOR", "INS", "SEL" }
 modal.keymaps = {
   [mode.NOR] = {
     [":"] = "core:find-command",
@@ -173,12 +173,14 @@ modal.keymaps = {
     ["u"] = "doc:undo",
     ["U"] = "doc:redo",
     ["p"] = "doc:paste",
+    ["P"] = "jp",
     ["y"] = "doc:copy",
     ["d"] = delete,
     ["J"] = "doc:join-lines",
     ["\\<"] = unindent,
     [">"] = indent,
-
+    ["r"] = { delete, modal.go_to_mode(mode.INS) },
+    ["R"] = "doc:paste",
     -- search
     ["<space>/"] = "project-search:find",
     ["/"] = "find-replace:find",
