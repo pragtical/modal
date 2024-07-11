@@ -11,60 +11,22 @@ local modal = {}
 core.modal = modal
 
 
-modal.mode = 1
-modal.modes = { "NOR", "INS", "SEL" }
+modal.mode = 0
+modal.modes = {}
 
-local function go_to_mode(mode)
+modal.keymaps = {}
+modal.on_key_callbacks = {}
+
+modal.caret_style = { NORMAL = 0, BAR = 1, }
+modal.carets = {}
+modal.keystrokes = {}
+
+
+function modal.go_to_mode(mode)
   return function()
     modal.set_mode(mode)
   end
 end
-
-modal.keymaps = {
-  [1] = {
-    ["i"] = go_to_mode(2),
-    ["o"] = { "doc:newline-below", go_to_mode(2) },
-    ["v"] = go_to_mode(3),
-    ["u"] = "doc:undo",
-    ["U"] = "doc:redo",
-    ["p"] = "doc:paste",
-    ["y"] = "doc:copy",
-    [":"] = "core:find-command",
-    ["<left>"] = { "doc:move-to-previous-char", "dialog:previous-entry" },
-    ["<right>"] = { "doc:move-to-next-char", "dialog:next-entry" },
-    ["<up>"] = { "command:select-previous", "doc:move-to-previous-line" },
-    ["<down>"] = { "command:select-next", "doc:move-to-next-line" },
-    ["<space>f"] = "core:find-file",
-    ["<space>F"] = "core:open-file",
-    ["<space>P"] = "core:open-project-folder",
-    ["<f11>"] = "core:toogle-full-screen",
-    ["<space>wv"] = { "root:split-left", "root:switch-to-left" },
-    ["<space>ws"] = { "root:split-down", "root:switch-to-down" },
-    ["<space>wq"] = "root:close-or-quit",
-    ["<space>w<left>"] = "root:switch-to-left",
-    ["<space>w<right>"] = "root:switch-to-right",
-    ["<space>w<up>"] = "root:switch-to-up",
-    ["<space>w<down>"] = "root:switch-to-down",
-  },
-  [2] = {
-    ["<ESC>"] = go_to_mode(1),
-  },
-  [3] = {
-    ["i"] = go_to_mode(2),
-    ["v"] = go_to_mode(1),
-    ["<ESC>"] = go_to_mode(1),
-  },
-}
-modal.on_key_callbacks = {}
-
-modal.caret_style = { NORMAL = 0, BAR = 1, }
-modal.carets = {
-  modal.caret_style.BAR,
-  modal.caret_style.NORMAL,
-  modal.caret_style.BAR,
-}
-modal.keystrokes = {}
-
 
 local function dv()
   return core.active_view
@@ -208,8 +170,10 @@ end
 modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
-  if k == 'left shift' or k == 'right shift' then
-    key_modifiers[k] = false
+  if modal.mode ~= 0 then
+    if k == 'left shift' or k == 'right shift' then
+      key_modifiers[k] = false
+    end
   end
   return modal.on_key_released__orig(k)
 end
@@ -256,14 +220,8 @@ function modal.set_mode(mode_index)
   core.log(style.caret_width)
 end
 
-modal.on_key_callbacks = {
-  [1] = modal.on_key_command_only,
-  [2] = modal.on_key_passtrought,
-  [3] = modal.on_key_command_only,
-}
-
 function keymap.on_key_pressed(k, ...)
-  if dv():is(CommandView) then
+  if dv():is(CommandView) or modal.mode == 0 then
     return modal.on_key_pressed__orig(k, ...)
   end
   if modal.on_key_callbacks[modal.mode] then
@@ -275,7 +233,7 @@ end
 
 local DocView__update__orig = DocView.update
 function DocView:update(...)
-  if dv():is(CommandView) then
+  if dv():is(CommandView) or modal.mode == 0 then
     style.caret_width = caret_width__orig
   else
     local c_style = modal.carets[modal.mode]
@@ -295,7 +253,11 @@ core.status_view:add_item({
   name = "status:mode",
   alignment = StatusView.Item.LEFT,
   get_item = function()
-    return { modal.modes[modal.mode], }
+    if modal.mode == 0 then
+      return { "NO MODE", }
+    else
+      return { modal.modes[modal.mode], }
+    end
   end,
   position = -1,
   tooltip = "mode",
