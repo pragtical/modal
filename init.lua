@@ -166,17 +166,22 @@ function modal.is_partial_command(seq)
 end
 
 local function eval_cmd(cmd)
-  -- TODO implement correctly sequence luncher
-  if type(cmd) == "table" then
+  if cmd == nil then
+    return nil
+  elseif type(cmd) == "table" then
     for _, scmd in pairs(cmd) do
       eval_cmd(scmd)
     end
   elseif type(cmd) == "string" then
     local mode = get_mode()
-    if modal.keymaps[mode][cmd] ~= nil then
-      eval_cmd(modal.keymaps[mode][cmd])
-    else
+    if command.map[cmd] then
       command.perform(cmd)
+    else
+      local mode = get_mode()
+      for i = 1, #cmd do
+        local scmd = string.sub(cmd, i, i)
+        eval_cmd(modal.keymaps[mode][scmd])
+      end
     end
   elseif type(cmd) == "function" then
     cmd()
@@ -185,7 +190,9 @@ end
 
 function modal.redo_command()
   if modal.internal.last_command ~= nil then
-    eval_cmd(modal.internal.last_command)
+    for _ in 1, modal.internal.last_command.num do
+      eval_cmd(modal.internal.last_command.cmd)
+    end
   end
 end
 
@@ -213,10 +220,13 @@ function modal.eval_current_strokes()
     cmd = modal.keymaps[mode][seq]
     local N = 1
     modal.internal.keystrokes = {}
-    modal.internal.last_command = seq
     if #N_repeat > 0 then
       N = math.floor(tonumber(N_repeat) or error("String is not a number"))
     end
+    modal.internal.last_command = {
+      num = N,
+      cmd = seq
+    }
     for _ = 1, N do
       eval_cmd(cmd)
     end
