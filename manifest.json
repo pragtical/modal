@@ -7,7 +7,7 @@
       "name": "modal",
       "path": ".",
       "type": "plugin",
-      "version": "0.1",
+      "version": "0.2",
       "dependencies": {
         "lsp": {
           "optional": true
