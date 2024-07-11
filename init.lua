@@ -10,9 +10,9 @@ local DocView = require "core.docview"
 local modal = {}
 core.modal = modal
 
-
-modal.mode = 0
+modal.base_mode = 0
 modal.modes = {}
+modal.last_command = nil
 
 modal.keymaps = {}
 modal.on_key_callbacks = {}
@@ -20,6 +20,11 @@ modal.on_key_callbacks = {}
 modal.caret_style = { NORMAL = 0, BAR = 1, }
 modal.carets = {}
 modal.keystrokes = {}
+modal.helpers = {}
+
+modal.config = {
+  ["show_help"] = false,
+}
 
 
 function modal.go_to_mode(mode)
@@ -79,6 +84,14 @@ local shift_keys = {
   ["/"] = "?",
 }
 
+local function get_mode()
+  if dv().doc ~= nil then
+    return dv().doc.modal
+  else
+    return 0
+  end
+end
+
 local function apply_mods(key)
   local shift = key_modifiers['left shift'] or key_modifiers['right shift']
   if shift and shift_keys[key] then
@@ -113,7 +126,8 @@ end
 
 function modal.is_partial_command(seq)
   local len = #seq
-  for key, _ in pairs(modal.keymaps[modal.mode]) do
+  local mode = get_mode()
+  for key, _ in pairs(modal.keymaps[mode]) do
     local skey = string.sub(key, 1, len)
     if skey == seq then
       return true
@@ -128,13 +142,20 @@ local function eval_cmd(cmd)
       eval_cmd(scmd)
     end
   elseif type(cmd) == "string" then
+    local mode = get_mode()
     if string.find(cmd, ":") then
       command.perform(cmd)
-    elseif modal.keymaps[modal.mode][cmd] ~= nil then
-      eval_cmd(modal.keymaps[modal.mode][cmd])
+    elseif modal.keymaps[mode][cmd] ~= nil then
+      eval_cmd(modal.keymaps[mode][cmd])
     end
   elseif type(cmd) == "function" then
     cmd()
+  end
+end
+
+function modal.redo_command()
+  if modal.last_command ~= nil then
+    eval_cmd(modal.last_command)
   end
 end
 
@@ -149,10 +170,12 @@ function modal.eval_current_strokes()
       seq = seq .. modal.keystrokes[i]
     end
   end
-  if modal.keymaps[modal.mode][seq] ~= nil then
-    cmd = modal.keymaps[modal.mode][seq]
+  local mode = get_mode()
+  if modal.keymaps[mode][seq] ~= nil then
+    cmd = modal.keymaps[mode][seq]
     local N = 1
     modal.keystrokes = {}
+    modal.last_command = seq
     if #N_repeat > 0 then
       N = math.floor(tonumber(N_repeat) or error("String is not a number"))
     end
@@ -170,7 +193,8 @@ end
 modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
-  if modal.mode ~= 0 then
+  local mode = get_mode()
+  if mode ~= 0 then
     if k == 'left shift' or k == 'right shift' then
       key_modifiers[k] = false
     end
@@ -204,28 +228,28 @@ function modal.on_key_command_only(k, ...)
 end
 
 local caret_width__orig = style.caret_width
-core.log(">> %d", style.caret_width)
 function modal.set_mode(mode_index)
-  modal.mode = mode_index
-  local c_style = modal.carets[mode_index]
-  core.log("STYLE: %s", tostring(c_style))
-  if c_style == nil then
-    c_style = modal.caret_style.NORMAL
+  if dv().doc ~= nil then
+    dv().doc.modal = mode_index
+    local c_style = modal.carets[mode_index]
+    if c_style == nil then
+      c_style = modal.caret_style.NORMAL
+    end
+    local width = caret_width__orig
+    if c_style == modal.caret_style.BAR and core.active_view.get_font then
+      width = core.active_view:get_font():get_width(' ')
+    end
+    style.caret_width = width
   end
-  local width = caret_width__orig
-  if c_style == modal.caret_style.BAR and core.active_view.get_font then
-    width = core.active_view:get_font():get_width(' ')
-  end
-  style.caret_width = width
-  core.log(style.caret_width)
 end
 
 function keymap.on_key_pressed(k, ...)
-  if dv():is(CommandView) or modal.mode == 0 then
+  local mode = get_mode()
+  if dv():is(CommandView) or mode == 0 then
     return modal.on_key_pressed__orig(k, ...)
   end
-  if modal.on_key_callbacks[modal.mode] then
-    return modal.on_key_callbacks[modal.mode](k, ...)
+  if modal.on_key_callbacks[mode] then
+    return modal.on_key_callbacks[mode](k, ...)
   else
     return modal.on_key_pressed__orig(k, ...)
   end
@@ -233,10 +257,15 @@ end
 
 local DocView__update__orig = DocView.update
 function DocView:update(...)
-  if dv():is(CommandView) or modal.mode == 0 then
+  local mode = get_mode()
+  if dv():is(CommandView) then
     style.caret_width = caret_width__orig
   else
-    local c_style = modal.carets[modal.mode]
+    if mode == nil or mode == 0 then
+      modal.set_mode(modal.base_mode)
+      mode = modal.base_mode
+    end
+    local c_style = modal.carets[mode]
     if c_style == nil then
       c_style = modal.caret_style.NORMAL
     end
@@ -249,20 +278,23 @@ function DocView:update(...)
   DocView__update__orig(self, ...)
 end
 
-core.status_view:add_item({
-  name = "status:mode",
-  alignment = StatusView.Item.LEFT,
-  get_item = function()
-    if modal.mode == 0 then
-      return { "NO MODE", }
-    else
-      return { modal.modes[modal.mode], }
-    end
-  end,
-  position = -1,
-  tooltip = "mode",
-  separator = core.status_view.separator2
-})
+if core.status_view:get_item("status:mode") == nil then
+  core.status_view:add_item({
+    name = "status:mode",
+    alignment = StatusView.Item.LEFT,
+    get_item = function()
+      local mode = get_mode()
+      if mode == 0 or modal.modes[mode] == nil then
+        return { "NO MODE", }
+      else
+        return { modal.modes[mode], }
+      end
+    end,
+    position = 1,
+    tooltip = "mode",
+    separator = core.status_view.separator2
+  })
+end
 
-modal.set_mode(modal.mode)
+core.log("MODAL Ready")
 return modal
