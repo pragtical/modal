@@ -6,7 +6,7 @@ local search = require "core.doc.search"
 local config = require "core.config"
 
 local hx_info = {}
-hx_info.last_select =""
+hx_info.last_select = ""
 -- TODO implement registers
 hx_info.target_register = nil
 hx_info.registers = {}
@@ -144,6 +144,15 @@ local function search_select()
   })
 end
 
+local function concat(t1, t2)
+  for k, v in pairs(t1) do
+    if t2[k] == nil then
+      t2[k] = v
+    end
+  end
+  return t2
+end
+
 
 
 local mode = { NOR = 1, INS = 2, SEL = 3 }
@@ -169,7 +178,7 @@ modal.keymaps = {
     ["J"] = "doc:join-lines",
     ["\\<"] = unindent,
     [">"] = indent,
-    
+
     -- search
     ["<space>/"] = "project-search:find",
     ["/"] = "find-replace:find",
@@ -194,8 +203,8 @@ modal.keymaps = {
     ["W"] = { unselect, "doc:select-to-next-WORD-end" },
     ["e"] = { unselect, "doc:select-to-next-word-end" },
     ["E"] = { unselect, "doc:select-to-next-WORD-end" },
-    ["b"] = {unselect, "doc:select-to-previous-word-start"},
-    ["B"] = {unselect, "doc:select-to-previous-WORD-start"},
+    ["b"] = { unselect, "doc:select-to-previous-word-start" },
+    ["B"] = { unselect, "doc:select-to-previous-WORD-start" },
     ["%"] = "doc:select-all",
 
     -- multi cursors and selections
@@ -246,6 +255,32 @@ modal.keymaps = {
     ["<ESC>"] = modal.go_to_mode(mode.NOR),
   },
 }
+
+local sel_movements = {
+  ["<left>"] = { "doc:select-to-previous-char", "dialog:previous-entry" },
+  ["<right>"] = { "doc:select-to-next-char", "dialog:next-entry" },
+  ["<up>"] = { "command:select-previous", "doc:select-to-previous-line" },
+  ["<down>"] = { "command:select-next", "doc:select-to-next-line" },
+  ["h"] = { "doc:select-to-previous-char" },
+  ["l"] = { "doc:select-to-next-char" },
+  ["k"] = { "doc:select-to-previous-line" },
+  ["j"] = { "doc:select-to-next-line" },
+  ["<pageup>"] = { "doc:select-to-previous-page" },
+  ["<pagedown>"] = { "doc:select-to-next-page" },
+
+  -- movement + selection
+  ["w"] = { "doc:select-to-next-word-end" },
+  ["W"] = { "doc:select-to-next-WORD-end" },
+  ["e"] = { "doc:select-to-next-word-end" },
+  ["E"] = { "doc:select-to-next-WORD-end" },
+  ["b"] = { "doc:select-to-previous-word-start" },
+  ["B"] = { "doc:select-to-previous-WORD-start" },
+  [","] = nil
+}
+
+modal.keymaps[mode.SEL] = concat(modal.keymaps[mode.NOR], modal.keymaps[mode.SEL])
+modal.keymaps[mode.SEL] = concat(modal.keymaps[mode.SEL], sel_movements)
+
 modal.carets = {
   modal.caret_style.BAR,
   modal.caret_style.NORMAL,
