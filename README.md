@@ -83,8 +83,6 @@ Each sequence can execute one or more commands, the commands can be functions or
 If it is a string and it match another sequence, the sequence command is executed, otherwise 
 it will execute as a `lite-xl` command.
 
-**TODO** : implement correctly the sequence executer.
-
 Optionally it is possible to configure additional features: 
 ```lua
 -- define BAR caret
@@ -98,6 +96,8 @@ modal.helpers[modal.modes.NOR] = {
   }
 }
 ```
+
+For more detailed example please look at [hx_style.lua](hx_style.lua) preset.
 
 ### Helix Style Preset
 
