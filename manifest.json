@@ -2,12 +2,23 @@
   "addons": [
     {
       "id": "modal",
+      "description": "Fully customizable modal editing for Lite XL",
       "mod_version": "3",
       "name": "modal",
       "path": ".",
       "type": "plugin",
       "version": "0.1",
-      "dependencies": {      }
+      "dependencies": {
+        "lsp": {
+          "optional": true
+        },
+        "lintplus": {
+          "optional": true
+        },
+        "tab_switcher": {
+          "optional": true
+        }
+      }
     }
   ]
 }
