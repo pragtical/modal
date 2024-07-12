@@ -9,46 +9,45 @@ A fully customizable modal editing experience for Lite Xl
 
 The configuration of the modal experience can be done via the follow parameters:
 
-| field | default | comment |
-|:------|:-------:|:--------| 
-|`modal.base_mode`| `nil` | default mode when opening a new document/session |
-|`modal.modes` | `{}` | enumerate all the possible modes available |
-|`modal.keymaps` | `{}` | table containing keymaps for each available mode |
-|`modal.on_key_callbacks` | `{}` | table containing `on_key_pressed` callbacks for each mode |
-|`modal.carets` | `{}` | carets styles for each mode |
-|`modal.helpers` | `{}` | available command helpers per mode |
-|`modal.config.helper.show` | `true` | enable or disable command helper |
-
+| Field                                  | Default | Comment                                                   |
+|:---------------------------------------|:-------:|:----------------------------------------------------------| 
+|`config.plugins.modal.base_mode`        | `nil`   | default mode when opening a new document/session          |
+|`config.plugins.modal.modes`            | `{}`    | enumerate all the possible modes available                |
+|`config.plugins.modal.keymaps`          | `{}`    | table containing keymaps for each available mode          |
+|`config.plugins.modal.on_key_callbacks` | `{}`    | table containing `on_key_pressed` callbacks for each mode |
+|`config.plugins.modal.carets`           | `{}`    | carets styles for each mode                               |
+|`config.plugins.modal.helpers`          | `{}`    | available command helpers per mode                        |
+|`config.plugins.modal.show_helpers`     | `true`  | enable or disable command helper                          |
 
 Additionally the helper styling can be changed:
 
-| field | default | comment |
-|:------|:-------:|:--------| 
-|`style.helper.background` | `#000000C8` | helper background color |
-|`style.helper.text` | `#FFFFFFDC` | helper text color |
-|`style.helper.padding` | 10 | helper internal padding |
-|`style.helper.margin` | 10 | helper external margin |
-|`style.helper.alignement` | `modal.align.LEFT` | helper alignement |
+| Field                    | Default            | Comment                 |
+|:-------------------------|:------------------:|:------------------------| 
+|`style.helper.background` | `#000000C8`        | helper background color |
+|`style.helper.text`       | `#FFFFFFDC`        | helper text color       |
+|`style.helper.padding`    | 10                 | helper internal padding |
+|`style.helper.margin`     | 10                 | helper external margin  |
+|`style.helper.alignement` | `modal.align.LEFT` | helper alignement       |
 
 ### Configuration details
 
 It is possible to configure any number of modes in the `modal.modes` table, for example:
 
 ```lua
-modal.modes = {NORMAL=1, INSERT=2, VISUAL=3}
+config.plugins.modal.modes = {"NORMAL", "INSERT", "VISUAL"}
 ```
 Then you should decide wich mode is the base/default mode for example:
 
 ```lua
-modal.base_mode = modal.modes.NORMAL
+config.plugins.modal.base_mode = "NORMAL"
 ```
 
 Then decide which kind of `on_key_pressed` call back to use (*or define your owns*):
 
 ```lua
-modal.on_key_callbacks[modal.modes.NORMAL] = modal.on_key_command_only
-modal.on_key_callbacks[modal.modes.INSERT] = modal.on_key_passtrought
-modal.on_key_callbacks[modal.modes.VISUAL] = modal.on_key_command_only
+config.plugins.modal.on_key_callbacks.NORMAL = modal.on_key_command_only
+config.plugins.modal.on_key_callbacks.INSERT = modal.on_key_passtrought
+config.plugins.modal.on_key_callbacks.VISUAL = modal.on_key_command_only
 ```
 
 The callback `on_key_command_only` will only register the keystrokes and execute
@@ -63,9 +62,9 @@ You can define your own logics if you want something different.
 Lastly you have to define the keymaps for the different modes:
 
 ```lua
-modal.keymaps[modal.modes.NORMAL] = {
-  ["i"] = modal.go_to_mode(modal.modes.INSERT), -- function call back
-  ["v"] = modal.go_to_mode(modal.modes.VISUAL),
+config.plugins.modal.keymaps.NORMAL = {
+  ["i"] = modal.go_to_mode("INSERT"), -- function call back
+  ["v"] = modal.go_to_mode("VISUAL"),
   ["u"] = "doc:undo",
   ["<left>"] = {"doc:move-to-previous-char", "dialog:previous-entry"},
   ["j"] = "doc:move-to-next-line",
@@ -73,8 +72,8 @@ modal.keymaps[modal.modes.NORMAL] = {
   ["P"] = "jp", -- other sequence 
   -- .....
 }
-modal.keymaps[modal.modes.INSERT] = {
-  ["<ESC>"] = modal.go_to_mode(modal.modes.NORMAL),
+config.plugins.modal.keymaps.INSERT = {
+  ["<ESC>"] = modal.go_to_mode("NORMAL"),
 }
 -- ...
 ```
@@ -86,10 +85,10 @@ it will execute as a `lite-xl` command.
 Optionally it is possible to configure additional features: 
 ```lua
 -- define BAR caret
-modal.carets[modal.modes.NOR] = modal.caret_style.BAR
+config.plugins.modal.carets.NORMAL = modal.caret_style.BAR
 
 -- helper definition
-modal.helpers[modal.modes.NOR] = {
+config.plugins.modal.helpers.NORMAL = {
   ["<space>"] = {
     {"f", "open file picker"},
     {"P", "open project picker"},--...
