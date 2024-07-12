@@ -298,6 +298,9 @@ config.plugins.modal.keymaps = {
     ["<space>w<up>"] = "root:switch-to-up",
     ["<space>w<down>"] = "root:switch-to-down",
 
+    -- LITE
+    ["<space>\\"] = "treeview:toggle",
+
     -- LSP (Require lintplus and LSP plugins)
     ["<space>k"] = "lsp:show-symbol-info",
     ["<space>r"] = "lsp:rename-symbol",
@@ -368,6 +371,7 @@ local helpers = {
     { "w", "window mode" },
     { "k", "show symbol information" },
     { "r", "rename symbol" },
+    {"\\", "toggle project tree"},
   },
   ["<space>w"] = {
     { "q",     "close tab" },
