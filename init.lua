@@ -7,19 +7,22 @@ local StatusView = require "core.statusview"
 local CommandView = require "core.commandview"
 local DocView = require "core.docview"
 local RootView = require "core.rootview"
+local common = require "core.common"
+local config = require "core.config"
 
 local modal = {}
 core.modal = modal
 
-modal.base_mode = nil
-modal.modes = {}
+config.plugins.modal = common.merge({
+  base_mode = nil,
+  modes = {},
+  on_key_callbacks = {},
+  carets = {},
+  helpers = {},
+  show_helpers = true,
+})
 
-modal.keymaps = {}
-modal.on_key_callbacks = {}
 modal.caret_style = { NORMAL = 0, BAR = 1, }
-modal.carets = {}
-modal.helpers = {}
-
 
 modal.align = {
   LEFT = 1, CENTER = 2, RIGHT = 3
@@ -108,18 +111,6 @@ local function get_mode()
   end
 end
 
-local function get_mode_str()
-  local mode = get_mode()
-  if mode == nil or mode == 0 then
-    return nil
-  end
-  for k, v in pairs(modal.modes) do
-    if v == mode then
-      return k
-    end
-  end
-  return nil
-end
 
 local function apply_mods(key)
   local shift = key_modifiers['left shift'] or key_modifiers['right shift']
@@ -156,7 +147,7 @@ end
 function modal.is_partial_command(seq)
   local len = #seq
   local mode = get_mode()
-  for key, _ in pairs(modal.keymaps[mode]) do
+  for key, _ in pairs(config.plugins.modal.keymaps[mode]) do
     local skey = string.sub(key, 1, len)
     if skey == seq then
       return true
@@ -180,7 +171,7 @@ local function eval_cmd(cmd)
       local mode = get_mode()
       for i = 1, #cmd do
         local scmd = string.sub(cmd, i, i)
-        eval_cmd(modal.keymaps[mode][scmd])
+        eval_cmd(config.plugins.modal.keymaps[mode][scmd])
       end
     end
   elseif type(cmd) == "function" then
@@ -198,8 +189,8 @@ end
 
 function modal.eval_helper(seq)
   local mode = get_mode()
-  if modal.config.helper.show == true and modal.helpers[mode] ~= nil then
-    modal.internal.active_help = modal.helpers[mode][seq]
+  if config.plugins.modal.show_helpers == true and config.plugins.modal.helpers[mode] ~= nil then
+    modal.internal.active_help = config.plugins.modal.helpers[mode][seq]
   end
 end
 
@@ -216,8 +207,8 @@ function modal.eval_current_strokes()
     end
   end
   local mode = get_mode()
-  if modal.keymaps[mode][seq] ~= nil then
-    cmd = modal.keymaps[mode][seq]
+  if config.plugins.modal.keymaps[mode][seq] ~= nil then
+    cmd = config.plugins.modal.keymaps[mode][seq]
     local N = 1
     modal.internal.keystrokes = {}
     if #N_repeat > 0 then
@@ -280,7 +271,7 @@ local caret_width__orig = style.caret_width
 function modal.set_mode(mode_index)
   if dv().doc ~= nil then
     dv().doc.modal = mode_index
-    local c_style = modal.carets[mode_index]
+    local c_style = config.plugins.modal.carets[mode_index]
     if c_style == nil then
       c_style = modal.caret_style.NORMAL
     end
@@ -297,8 +288,8 @@ function keymap.on_key_pressed(k, ...)
   if dv():is(CommandView) or mode == 0 then
     return modal.on_key_pressed__orig(k, ...)
   end
-  if modal.on_key_callbacks[mode] then
-    return modal.on_key_callbacks[mode](k, ...)
+  if config.plugins.modal.on_key_callbacks[mode] then
+    return config.plugins.modal.on_key_callbacks[mode](k, ...)
   else
     return modal.on_key_pressed__orig(k, ...)
   end
@@ -311,10 +302,10 @@ function DocView:update(...)
     style.caret_width = caret_width__orig
   else
     if mode == nil or mode == 0 then
-      modal.set_mode(modal.base_mode)
-      mode = modal.base_mode
+      modal.set_mode(config.plugins.modal.base_mode)
+      mode = config.plugins.modal.base_mode
     end
-    local c_style = modal.carets[mode]
+    local c_style = config.plugins.modal.carets[mode]
     if c_style == nil then
       c_style = modal.caret_style.NORMAL
     end
@@ -332,7 +323,7 @@ if core.status_view:get_item("status:mode") == nil then
     name = "status:mode",
     alignment = StatusView.Item.LEFT,
     get_item = function()
-      local mode_str = get_mode_str()
+      local mode_str = get_mode()
       if mode_str == nil then
         return { "NO MODE", }
       else
