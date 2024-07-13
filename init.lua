@@ -296,7 +296,6 @@ function keymap.on_key_pressed(k, ...)
   if view:is(CommandView) then
     return modal.on_key_pressed__orig(k, ...)
   end
-
   if view.modal and view.modal.callback then
     return view.modal.callback(k, ...)
   else
