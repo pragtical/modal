@@ -60,25 +60,30 @@ end
 --   return core.active_view.doc
 -- end
 
-local key_mapping = {
+modal.key_mapping = {
   ['escape'] = "<ESC>",
-  ['ctrl'] = 'C-',
-  ['alt'] = 'A-',
-  ['shift'] = '',    -- modifier
+  ['left ctrl'] = 'C-',
+  ['right ctrl'] = 'C-',
+  ['left alt'] = 'A-',
+  ['right alt'] = 'A-',
+  ['left shift'] = '',    -- modifier
+  ['right shift'] = '',    -- modifier
   ['capslock'] = '', -- modifier
-  ['gui'] = 'M-',
+  ['left gui'] = 'M-',
+  ['right gui'] = 'M-',
   ['space'] = '<space>',
   ['backspace'] = '<bkspc>',
-  ['delete'] = '<del>'
+  ['delete'] = '<del>',
+  ['<'] = '\\<',
 }
 
-local key_modifiers = {
+modal.key_modifiers = {
   ["left shift"] = false,
   ["right shift"] = false,
   ["capslock"] = false,
 }
 
-local shift_keys = {
+modal.shift_keys = {
   [";"] = ":",
   ["§"] = "±",
   ["`"] = "~",
@@ -113,31 +118,31 @@ end
 
 
 local function apply_mods(key)
-  local shift = key_modifiers['left shift'] or key_modifiers['right shift']
-  if shift and shift_keys[key] then
-    return shift_keys[key]
+  local shift = modal.key_modifiers['left shift'] or modal.key_modifiers['right shift']
+  if shift and modal.shift_keys[key] then
+    return modal.shift_keys[key]
   end
-  local capslock = key_modifiers['capslock']
-  if not (shift == capslock) then
+  local capslock = modal.key_modifiers['capslock']
+  if not (shift == capslock) and #key == 1 then
     return string.upper(key)
   end
   return key
 end
 
 function modal.convert_stroke(key)
-  if key_modifiers[key] ~= nil then
-    key_modifiers[key] = not key_modifiers[key]
+  if modal.key_modifiers[key] ~= nil then
+    modal.key_modifiers[key] = not modal.key_modifiers[key]
     return ''
   end
-  for seq, val in pairs(key_mapping) do
-    if string.find(key, seq) then
-      return val
-    end
+  key = apply_mods(key)
+  if modal.key_mapping[key] ~= nil then
+    return modal.key_mapping[key]
   end
+
   if #key > 1 then
     return "<" .. key .. ">"
   end
-  return apply_mods(key)
+  return key
 end
 
 local function is_number(x)
@@ -235,7 +240,7 @@ modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
   if k == 'left shift' or k == 'right shift' then
-    key_modifiers[k] = false
+    modal.key_modifiers[k] = false
   end
   return modal.on_key_released__orig(k)
 end
