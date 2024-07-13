@@ -17,6 +17,9 @@
         },
         "tab_switcher": {
           "optional": true
+        },
+        "buffers": {
+          "optional": true
         }
       }
     }

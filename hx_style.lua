@@ -303,8 +303,10 @@ config.plugins.modal.keymaps = {
     ["<space>F"] = "core:open-file",
     ["<space>p"] = "core:change-project-folder",
     ["<space>P"] = "core:open-project-folder",
-    ["<space>b"] = "tab-switcher:tab-list", -- need plugin tab-switcher
-
+    ["<space>b"] = "buffer:picker", -- need plugin tab-switcher
+    ["<space>c"] = "doc:toggle-line-comments",
+    ["C-c"] = "doc:toggle-line-comments",
+    
     -- WINDOWS operations
     ["<f11>"] = "core:toogle-full-screen",
     ["<space>wv"] = { "root:split-right", "root:switch-to-right" },
@@ -398,6 +400,7 @@ local helpers = {
     { "w",  "window mode" },
     { "k",  "show symbol information" },
     { "r",  "rename symbol" },
+    {"c", "comment line"},
     { "\\", "toggle project tree" },
     { "l",  "lite-xl mode" },
   },
