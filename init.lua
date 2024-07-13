@@ -104,10 +104,10 @@ local shift_keys = {
 }
 
 local function get_mode()
-  if dv() ~= nil then
-    return dv().modal
+  if dv() ~= nil and dv().modal ~= nil then
+    return dv().modal.mode
   else
-    return 0
+    return nil
   end
 end
 
@@ -164,13 +164,15 @@ local function eval_cmd(cmd)
       eval_cmd(scmd)
     end
   elseif type(cmd) == "string" then
-    local mode = get_mode()
     if command.map[cmd] then
       command.perform(cmd)
     else
-      for i = 1, #cmd do
-        local scmd = string.sub(cmd, i, i)
-        eval_cmd(config.plugins.modal.keymaps[mode][scmd])
+      local view = dv()
+      if view then
+        for i = 1, #cmd do
+          local scmd = string.sub(cmd, i, i)
+          eval_cmd(view.modal.keymap[scmd])
+        end
       end
     end
   elseif type(cmd) == "function" then
@@ -232,11 +234,8 @@ end
 modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
-  local mode = get_mode()
-  if mode ~= 0 then
-    if k == 'left shift' or k == 'right shift' then
-      key_modifiers[k] = false
-    end
+  if k == 'left shift' or k == 'right shift' then
+    key_modifiers[k] = false
   end
   return modal.on_key_released__orig(k)
 end
@@ -270,15 +269,6 @@ local caret_width__orig = style.caret_width
 function modal.set_mode(mode_id)
   local view = dv()
   if view ~= nil then
-    view.modal = {
-      mode = mode_id,
-      callback = config.plugins.modal.on_key_callbacks[mode_id],
-      helpers = config.plugins.modal.helpers[mode_id],
-      keymap = config.plugins.modal.keymaps[mode_id],
-    }
-    if view.modal.callback == nil then
-      view.modal.callback = modal.on_key_pressed__orig
-    end
     local c_style = config.plugins.modal.carets[mode_id]
     if c_style == nil then
       c_style = modal.caret_style.NORMAL
@@ -288,16 +278,27 @@ function modal.set_mode(mode_id)
       width = core.active_view:get_font():get_width(' ')
     end
     style.caret_width = width
+    view.modal = {
+      mode = mode_id,
+      callback = config.plugins.modal.on_key_callbacks[mode_id],
+      helpers = config.plugins.modal.helpers[mode_id],
+      keymap = config.plugins.modal.keymaps[mode_id],
+      caret = width
+    }
+    if view.modal.callback == nil then
+      view.modal.callback = modal.on_key_pressed__orig
+    end
   end
 end
 
 function keymap.on_key_pressed(k, ...)
-  if dv():is(CommandView) then
+  local view = dv()
+  if view:is(CommandView) then
     return modal.on_key_pressed__orig(k, ...)
   end
-  local callback = dv().modal.callback
-  if callback then
-    return callback(k, ...)
+
+  if view.modal and view.modal.callback then
+    return view.modal.callback(k, ...)
   else
     return modal.on_key_pressed__orig(k, ...)
   end
@@ -305,23 +306,18 @@ end
 
 local DocView__update__orig = DocView.update
 function DocView:update(...)
-  local mode = get_mode()
-  if dv():is(CommandView) then
+  local view = dv()
+  if view:is(CommandView) then
     style.caret_width = caret_width__orig
   else
-    if mode == nil or mode == 0 then
+    if view.modal == nil or view.modal.mode == nil then
       modal.set_mode(config.plugins.modal.base_mode)
-      mode = config.plugins.modal.base_mode
     end
-    local c_style = config.plugins.modal.carets[mode]
-    if c_style == nil then
-      c_style = modal.caret_style.NORMAL
+    if view.modal and view.modal.caret ~= nil then
+      style.caret_width = view.modal.caret
+    else
+      style.caret_width = caret_width__orig
     end
-    local width = caret_width__orig
-    if c_style == modal.caret_style.BAR and core.active_view.get_font then
-      width = core.active_view:get_font():get_width(' ')
-    end
-    style.caret_width = width
   end
   DocView__update__orig(self, ...)
 end
