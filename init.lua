@@ -20,7 +20,7 @@ config.plugins.modal = common.merge({
   carets = {},
   helpers = {},
   show_helpers = true,
-})
+}, config.plugins.modal)
 
 modal.caret_style = { NORMAL = 0, BAR = 1, }
 
@@ -104,8 +104,8 @@ local shift_keys = {
 }
 
 local function get_mode()
-  if dv().doc ~= nil then
-    return dv().doc.modal
+  if dv() ~= nil then
+    return dv().modal
   else
     return 0
   end
@@ -269,8 +269,8 @@ end
 
 local caret_width__orig = style.caret_width
 function modal.set_mode(mode_index)
-  if dv().doc ~= nil then
-    dv().doc.modal = mode_index
+  if dv() ~= nil then
+    dv().modal = mode_index
     local c_style = config.plugins.modal.carets[mode_index]
     if c_style == nil then
       c_style = modal.caret_style.NORMAL

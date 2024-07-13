@@ -23,6 +23,7 @@ local function doc()
 end
 
 local function doc_multiline_selections(sort)
+  if dv() == nil or doc() == nil or doc().get_selections == nil then return function() return nil end end
   local iter, state, idx, line1, col1, line2, col2 = doc():get_selections(sort)
   return function()
     idx, line1, col1, line2, col2 = iter(state, idx)
@@ -88,16 +89,18 @@ local function select_line()
 end
 
 local function delete()
-  local text = doc():get_text(doc():get_selection())
-  if #text > 1 then
-    if hx_info.target_register then
-      hx_info.registers[hx_info.target_register] = text
-      -- aand zero it back for further actions
-      hx_info.target_register = nil
+  if doc() and doc().get_selection then
+    local text = doc():get_text(doc():get_selection())
+    if #text > 1 then
+      if hx_info.target_register then
+        hx_info.registers[hx_info.target_register] = text
+        -- aand zero it back for further actions
+        hx_info.target_register = nil
+      end
+      system.set_clipboard(text)
     end
-    system.set_clipboard(text)
+    command.perform("doc:delete")
   end
-  command.perform("doc:delete")
 end
 
 local function select_in_blob(idx, line1, col1, line2, col2, text, opt)
@@ -290,9 +293,9 @@ config.plugins.modal.keymaps = {
 
     -- WINDOWS operations
     ["<f11>"] = "core:toogle-full-screen",
-    ["<space>wv"] = { "root:split-left", "root:switch-to-left" },
+    ["<space>wv"] = { "root:split-right", "root:switch-to-right" },
     ["<space>ws"] = { "root:split-down", "root:switch-to-down" },
-    ["<space>wq"] = "root:close-or-quit",
+    ["<space>wq"] = "root:close-view",
     ["<space>w<left>"] = "root:switch-to-left",
     ["<space>w<right>"] = "root:switch-to-right",
     ["<space>w<up>"] = "root:switch-to-up",
@@ -300,6 +303,12 @@ config.plugins.modal.keymaps = {
 
     -- LITE
     ["<space>\\"] = "treeview:toggle",
+    ["<space>ll"] = "core:open-log",
+    ["<space>lL"] = "log:open-as-doc",
+    ["<space>lu"] = "core:open-user-module",
+    ["<space>lr"] = "core:reload-module",
+    ["<space>lR"] = "core:restart",
+    ["<space>ls"] = "ui:settings",
 
     -- LSP (Require lintplus and LSP plugins)
     ["<space>k"] = "lsp:show-symbol-info",
@@ -360,18 +369,19 @@ config.plugins.modal.on_key_callbacks.INS = modal.on_key_passtrought
 
 local helpers = {
   ["<space>"] = {
-    { "f", "open project file picker" },
-    { "F", "open file picker" },
-    { "P", "open project folder" },
-    { "b", "open buffer picker" },
-    { "s", "show symbol picker" },
-    { "S", "show project symbol picer" },
-    { "d", "show document diagnostic picker" },
-    { "D", "show project diagnostic picker" },
-    { "w", "window mode" },
-    { "k", "show symbol information" },
-    { "r", "rename symbol" },
-    {"\\", "toggle project tree"},
+    { "f",  "open project file picker" },
+    { "F",  "open file picker" },
+    { "P",  "open project folder" },
+    { "b",  "open buffer picker" },
+    { "s",  "show symbol picker" },
+    { "S",  "show project symbol picer" },
+    { "d",  "show document diagnostic picker" },
+    { "D",  "show project diagnostic picker" },
+    { "w",  "window mode" },
+    { "k",  "show symbol information" },
+    { "r",  "rename symbol" },
+    { "\\", "toggle project tree" },
+    { "l",  "lite-xl mode" },
   },
   ["<space>w"] = {
     { "q",     "close tab" },
@@ -381,6 +391,15 @@ local helpers = {
     { "right", "jump to right split" },
     { "up",    "jump to split above" },
     { "down",  "jump to split below" },
+  },
+  ["<space>l"] = {
+
+    { "l", "open log" },
+    { "L", "open log as doc" },
+    { "u", "open user module" },
+    { "s", "open UI settings" },
+    { "r", "reload a module" },
+    { "R", "restart lite-xl" },
   },
   ["g"] = {
     { "g", "Goto file start" },
