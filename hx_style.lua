@@ -89,18 +89,19 @@ local function select_line()
 end
 
 local function delete()
-  if doc() and doc().get_selection then
-    local text = doc():get_text(doc():get_selection())
-    if #text > 1 then
-      if hx_info.target_register then
-        hx_info.registers[hx_info.target_register] = text
-        -- aand zero it back for further actions
-        hx_info.target_register = nil
-      end
-      system.set_clipboard(text)
-    end
-    command.perform("doc:delete")
-  end
+  -- if doc() and doc().get_selection then
+  --   local text = doc():get_text(doc():get_selection())
+  --   if #text > 1 then
+  --     if hx_info.target_register then
+  --       hx_info.registers[hx_info.target_register] = text
+  --       -- aand zero it back for further actions
+  --       hx_info.target_register = nil
+  --     end
+  --     system.set_clipboard(text)
+  --   end
+  --   command.perform("doc:delete")
+  -- end
+  command.perform("doc:delete")
 end
 
 local function select_in_blob(idx, line1, col1, line2, col2, text, opt)
@@ -210,7 +211,19 @@ end
 -- local on_key_pressed__orig = keymap.on_key_pressed
 local function listen_next()
   -- TODO implement some sort of one time listener
-  core.log("<r> not implemented yet")
+  core.warning("<r> not implemented yet")
+  modal.go_to_mode(mode.INS)
+end
+
+local function copy()
+  if doc() and doc().get_selection then
+    local l1, c1, l2, c2 = doc():get_selection()
+    if l1 == l2 and c2 == c1 then
+      c2 = c1 + 1
+    end
+    local text = doc():get_text(l1, c1, l2, c2)
+    system.set_clipboard(text)
+  end
 end
 
 config.plugins.modal.base_mode = mode.NOR
@@ -231,9 +244,9 @@ config.plugins.modal.keymaps = {
     ["u"] = "doc:undo",
     ["U"] = "doc:redo",
     ["p"] = "doc:paste",
-    ["P"] = "jp",
-    ["y"] = "doc:copy",
-    ["d"] = delete,
+    ["P"] = { "doc:newline-below", "doc:paste" },
+    ["y"] = copy,
+    ["d"] = { copy, delete },
     ["J"] = "doc:join-lines",
     ["\\<"] = unindent,
     [">"] = indent,
@@ -288,6 +301,7 @@ config.plugins.modal.keymaps = {
     -- FILE operations
     ["<space>f"] = "core:find-file",
     ["<space>F"] = "core:open-file",
+    ["<space>p"] = "core:change-project-folder",
     ["<space>P"] = "core:open-project-folder",
     ["<space>b"] = "tab-switcher:tab-list", -- need plugin tab-switcher
 
@@ -296,10 +310,13 @@ config.plugins.modal.keymaps = {
     ["<space>wv"] = { "root:split-right", "root:switch-to-right" },
     ["<space>ws"] = { "root:split-down", "root:switch-to-down" },
     ["<space>wq"] = "root:close-view",
+    ["<space>wQ"] = "core:quit",
     ["<space>w<left>"] = "root:switch-to-left",
     ["<space>w<right>"] = "root:switch-to-right",
     ["<space>w<up>"] = "root:switch-to-up",
     ["<space>w<down>"] = "root:switch-to-down",
+    ["<space>w+"] = "root:grow",
+    ["<space>w-"] = "root:shrink",
 
     -- LITE
     ["<space>\\"] = "treeview:toggle",
@@ -371,6 +388,7 @@ local helpers = {
   ["<space>"] = {
     { "f",  "open project file picker" },
     { "F",  "open file picker" },
+    { "p",  "change project folder" },
     { "P",  "open project folder" },
     { "b",  "open buffer picker" },
     { "s",  "show symbol picker" },
@@ -384,13 +402,16 @@ local helpers = {
     { "l",  "lite-xl mode" },
   },
   ["<space>w"] = {
-    { "q",     "close tab" },
+    { "q",     "close view" },
+    { "Q",     "quit Lite XL" },
     { "v",     "vertical right split" },
     { "s",     "horizontal down split" },
     { "left",  "jump to left split" },
     { "right", "jump to right split" },
     { "up",    "jump to split above" },
     { "down",  "jump to split below" },
+    { "+",     "grow view" },
+    { "-",     "shrink view" }
   },
   ["<space>l"] = {
 
