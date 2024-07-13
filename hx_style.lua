@@ -232,7 +232,7 @@ config.plugins.modal.modes = { mode.NOR, mode.INS, mode.SEL }
 config.plugins.modal.keymaps = {
   NOR = {
     [":"] = "core:find-command",
-
+    ["<return>"] = {  "command:submit", "dialog:select" },
     -- mode change
     ["i"] = { go_to_selection_start, modal.go_to_mode(mode.INS) },
     ["v"] = modal.go_to_mode(mode.SEL),
