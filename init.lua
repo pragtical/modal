@@ -145,9 +145,9 @@ local function is_number(x)
 end
 
 function modal.is_partial_command(seq)
+  local view = dv()
   local len = #seq
-  local mode = get_mode()
-  for key, _ in pairs(config.plugins.modal.keymaps[mode]) do
+  for key, _ in pairs(view.modal.keymap) do
     local skey = string.sub(key, 1, len)
     if skey == seq then
       return true
@@ -168,7 +168,6 @@ local function eval_cmd(cmd)
     if command.map[cmd] then
       command.perform(cmd)
     else
-      local mode = get_mode()
       for i = 1, #cmd do
         local scmd = string.sub(cmd, i, i)
         eval_cmd(config.plugins.modal.keymaps[mode][scmd])
@@ -188,14 +187,15 @@ function modal.redo_command()
 end
 
 function modal.eval_helper(seq)
-  local mode = get_mode()
-  if config.plugins.modal.show_helpers == true and config.plugins.modal.helpers[mode] ~= nil then
-    modal.internal.active_help = config.plugins.modal.helpers[mode][seq]
+  local view = dv()
+  if config.plugins.modal.show_helpers == true and view.modal.helpers ~= nil then
+    modal.internal.active_help = view.modal.helpers[seq]
   end
 end
 
 function modal.eval_current_strokes()
   modal.internal.active_help = nil
+  local view = dv()
   local N_repeat = ''
   local seq = ''
   local cmd = nil
@@ -206,9 +206,8 @@ function modal.eval_current_strokes()
       seq = seq .. modal.internal.keystrokes[i]
     end
   end
-  local mode = get_mode()
-  if config.plugins.modal.keymaps[mode][seq] ~= nil then
-    cmd = config.plugins.modal.keymaps[mode][seq]
+  if view.modal.keymap[seq] ~= nil then
+    cmd = view.modal.keymap[seq]
     local N = 1
     modal.internal.keystrokes = {}
     if #N_repeat > 0 then
@@ -268,10 +267,19 @@ function modal.on_key_command_only(k, ...)
 end
 
 local caret_width__orig = style.caret_width
-function modal.set_mode(mode_index)
-  if dv() ~= nil then
-    dv().modal = mode_index
-    local c_style = config.plugins.modal.carets[mode_index]
+function modal.set_mode(mode_id)
+  local view = dv()
+  if view ~= nil then
+    view.modal = {
+      mode = mode_id,
+      callback = config.plugins.modal.on_key_callbacks[mode_id],
+      helpers = config.plugins.modal.helpers[mode_id],
+      keymap = config.plugins.modal.keymaps[mode_id],
+    }
+    if view.modal.callback == nil then
+      view.modal.callback = modal.on_key_pressed__orig
+    end
+    local c_style = config.plugins.modal.carets[mode_id]
     if c_style == nil then
       c_style = modal.caret_style.NORMAL
     end
@@ -284,12 +292,12 @@ function modal.set_mode(mode_index)
 end
 
 function keymap.on_key_pressed(k, ...)
-  local mode = get_mode()
-  if dv():is(CommandView) or mode == 0 then
+  if dv():is(CommandView) then
     return modal.on_key_pressed__orig(k, ...)
   end
-  if config.plugins.modal.on_key_callbacks[mode] then
-    return config.plugins.modal.on_key_callbacks[mode](k, ...)
+  local callback = dv().modal.callback
+  if callback then
+    return callback(k, ...)
   else
     return modal.on_key_pressed__orig(k, ...)
   end
