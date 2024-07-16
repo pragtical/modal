@@ -68,9 +68,8 @@ end
 local function select_LINE()
   for idx, line1, col1, line2, col2 in doc_multiline_selections(false) do
     local lobj = doc().highlighter:get_line(line2)
-    local eol = math.huge
     if line1 == line2 and (col1 - col2 ~= #lobj.text - 1) then
-      doc():set_selections(idx, line2, eol, line1, 1)
+      doc():set_selections(idx, line2+1, 0, line1, 1)
     end
   end
 end
@@ -79,11 +78,10 @@ end
 local function select_line()
   for idx, line1, col1, line2, col2 in doc_multiline_selections(false) do
     local lobj = doc().highlighter:get_line(line2)
-    local eol = math.huge
     if line1 == line2 and (col1 - col2 ~= #lobj.text - 1) then
-      doc():set_selections(idx, line2, eol, line1, 1)
+      doc():set_selections(idx, line2 + 1, 0, line1, 1)
     else
-      doc():set_selections(idx, math.max(line1, line2) + 1, eol, math.min(line1, line2), 1)
+      doc():set_selections(idx, math.max(line1, line2) + 1, 0, math.min(line1, line2), 1)
     end
   end
 end
