@@ -41,11 +41,6 @@ style["helper"] = {
   ["alignement"] = modal.align.LEFT,
 }
 
-modal.internal = {}
-modal.internal.last_command = nil
-modal.internal.keystrokes = {}
-modal.internal.active_help = nil
-
 function modal.go_to_mode(mode)
   return function()
     modal.set_mode(mode)
@@ -186,9 +181,10 @@ local function eval_cmd(cmd)
 end
 
 function modal.redo_command()
-  if modal.internal.last_command ~= nil then
-    for _ in 1, modal.internal.last_command.num do
-      eval_cmd(modal.internal.last_command.cmd)
+  local view = dv()
+  if view.modal.last_command ~= nil then
+    for _ in 1, view.modal.last_command.num do
+      eval_cmd(view.modal.last_command.cmd)
     end
   end
 end
@@ -196,31 +192,31 @@ end
 function modal.eval_helper(seq)
   local view = dv()
   if config.plugins.modal.show_helpers == true and view.modal.helpers ~= nil then
-    modal.internal.active_help = view.modal.helpers[seq]
+    view.modal.active_help = view.modal.helpers[seq]
   end
 end
 
 function modal.eval_current_strokes()
-  modal.internal.active_help = nil
+  dv().modal.active_help = nil
   local view = dv()
   local N_repeat = ''
   local seq = ''
   local cmd = nil
-  for i = 1, #modal.internal.keystrokes do
-    if #seq == 0 and is_number(modal.internal.keystrokes[i]) then
-      N_repeat = N_repeat .. modal.internal.keystrokes[i]
+  for i = 1, #dv().modal.keystrokes do
+    if #seq == 0 and is_number(dv().modal.keystrokes[i]) then
+      N_repeat = N_repeat .. dv().modal.keystrokes[i]
     else
-      seq = seq .. modal.internal.keystrokes[i]
+      seq = seq .. dv().modal.keystrokes[i]
     end
   end
   if view.modal.keymap[seq] ~= nil then
     cmd = view.modal.keymap[seq]
     local N = 1
-    modal.internal.keystrokes = {}
+    dv().modal.keystrokes = {}
     if #N_repeat > 0 then
       N = math.floor(tonumber(N_repeat) or error("String is not a number"))
     end
-    modal.internal.last_command = {
+    dv().modal.last_command = {
       num = N,
       cmd = seq
     }
@@ -229,7 +225,7 @@ function modal.eval_current_strokes()
     end
   elseif not modal.is_partial_command(seq) then
     cmd = nil
-    modal.internal.keystrokes = {}
+    dv().modal.keystrokes = {}
   else
     modal.eval_helper(seq)
   end
@@ -250,7 +246,7 @@ modal.on_key_pressed__orig = keymap.on_key_pressed
 function modal.on_key_passtrought(k, ...)
   local key = modal.convert_stroke(k)
   if key and #key > 1 then
-    modal.internal.keystrokes[#modal.internal.keystrokes + 1] = key
+    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = key
     if modal.eval_current_strokes() then
       return true
     end
@@ -264,7 +260,7 @@ function modal.on_key_command_only(k, ...)
   end
   local key = modal.convert_stroke(k)
   if key and #key > 0 then
-    modal.internal.keystrokes[#modal.internal.keystrokes + 1] = key
+    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = key
     modal.eval_current_strokes()
   end
   return true
@@ -288,7 +284,10 @@ function modal.set_mode(mode_id)
       callback = config.plugins.modal.on_key_callbacks[mode_id],
       helpers = config.plugins.modal.helpers[mode_id],
       keymap = config.plugins.modal.keymaps[mode_id],
-      caret = width
+      caret = width,
+      keystrokes = {},
+      last_command = nil,
+      active_help = nil,
     }
     if view.modal.callback == nil then
       view.modal.callback = modal.on_key_pressed__orig
@@ -366,12 +365,12 @@ end
 local rvDraw = RootView.draw
 function RootView:draw(...)
   rvDraw(self, ...)
-  if modal.internal.active_help ~= nil then
+  if dv().modal.active_help ~= nil then
     local font = style.code_font
     local lines = {}
     local box_h = 0
     local box_w = 0
-    for _, kv in ipairs(modal.internal.active_help) do
+    for _, kv in ipairs(dv().modal.active_help) do
       local line = kv[1] .. spaces(#kv[1], 8) .. kv[2]
       local line_w = font:get_width(line)
       lines[#lines + 1] = line
