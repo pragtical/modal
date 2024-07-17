@@ -28,10 +28,17 @@ modal.align = {
   LEFT = 1, CENTER = 2, RIGHT = 3
 }
 modal.config = {
-  ["helper"] = {
-    ["show"] = true,
+  helper = {
+    show = true,
+  },
+  notification = {
+    timeout = 0.5,
+    fading = 0.1,
+    show = true,
   }
 }
+
+
 -- Helper styling
 style["helper"] = {
   ["background"] = { 0, 0, 0, 200 },
@@ -61,15 +68,20 @@ modal.key_mapping = {
   ['right ctrl'] = 'C-',
   ['left alt'] = 'A-',
   ['right alt'] = 'A-',
-  ['left shift'] = '',    -- modifier
-  ['right shift'] = '',    -- modifier
-  ['capslock'] = '', -- modifier
+  ['left shift'] = '',  -- modifier
+  ['right shift'] = '', -- modifier
+  ['capslock'] = '',    -- modifier
   ['left gui'] = 'M-',
   ['right gui'] = 'M-',
   ['space'] = '<space>',
   ['backspace'] = '<bkspc>',
   ['delete'] = '<del>',
   ['<'] = '\\<',
+}
+
+modal.reverse_key_mapping = {
+  ['\\<'] = '<',
+  ["<space>"] = ' ',
 }
 
 modal.key_modifiers = {
@@ -144,16 +156,74 @@ local function is_number(x)
   return x >= '0' and x <= '9'
 end
 
+function modal.split_command(cmd)
+  local array   = {}
+  local i       = 1
+  local sub_cmd = ''
+  local special = false
+  while i <= #cmd do
+    local c = string.sub(cmd, i, i)
+    if special then
+      sub_cmd = sub_cmd .. c
+      if c == '>' then
+        table.insert(array, sub_cmd)
+        sub_cmd = ''
+        special = false
+      end
+    elseif c == '<' then
+      if #array >= 1 and array[#array] == '\\' then
+        array[#array] = '\\<'
+      else
+        sub_cmd = c
+        special = true
+      end
+    else
+      table.insert(array, c)
+    end
+    i = i + 1
+  end
+  local x = ''
+  for _, c in ipairs(array) do
+    x = x .. c .. ' '
+  end
+  return array
+end
+
+local function match_command(seq, cmd, full)
+  local split_seq = modal.split_command(seq)
+  local split_cmd = modal.split_command(cmd)
+  if (full and #split_seq == #split_cmd) or (not full and #split_seq <= #split_cmd) then
+    for i = 1, #split_seq do
+      if split_seq[i] ~= split_cmd[i] and split_cmd[i] ~= "<.>" then
+        return false
+      end
+    end
+    return true
+  end
+  return false
+end
+
 function modal.is_partial_command(seq)
   local view = dv()
-  local len = #seq
   for key, _ in pairs(view.modal.keymap) do
-    local skey = string.sub(key, 1, len)
-    if skey == seq then
+    if match_command(seq, key, false) then
       return true
     end
   end
   return false
+end
+
+function modal.get_command(seq)
+  local view = dv()
+  if view.modal.keymap[seq] ~= nil then
+    return view.modal.keymap[seq]
+  end
+  for key, cmd in pairs(view.modal.keymap) do
+    if match_command(seq, key, true) then
+      return cmd
+    end
+  end
+  return nil
 end
 
 local function eval_cmd(cmd)
@@ -198,10 +268,8 @@ end
 
 function modal.eval_current_strokes()
   dv().modal.active_help = nil
-  local view = dv()
   local N_repeat = ''
   local seq = ''
-  local cmd = nil
   for i = 1, #dv().modal.keystrokes do
     if #seq == 0 and is_number(dv().modal.keystrokes[i]) then
       N_repeat = N_repeat .. dv().modal.keystrokes[i]
@@ -209,8 +277,8 @@ function modal.eval_current_strokes()
       seq = seq .. dv().modal.keystrokes[i]
     end
   end
-  if view.modal.keymap[seq] ~= nil then
-    cmd = view.modal.keymap[seq]
+  local cmd = modal.get_command(seq)
+  if cmd ~= nil then
     local N = 1
     dv().modal.keystrokes = {}
     if #N_repeat > 0 then
@@ -224,7 +292,6 @@ function modal.eval_current_strokes()
       eval_cmd(cmd)
     end
   elseif not modal.is_partial_command(seq) then
-    cmd = nil
     dv().modal.keystrokes = {}
   else
     modal.eval_helper(seq)
@@ -279,17 +346,27 @@ function modal.set_mode(mode_id)
       width = core.active_view:get_font():get_width(' ')
     end
     style.caret_width = width
-    view.modal = {
-      mode = mode_id,
-      callback = config.plugins.modal.on_key_callbacks[mode_id],
-      helpers = config.plugins.modal.helpers[mode_id],
-      keymap = config.plugins.modal.keymaps[mode_id],
-      caret = width,
-      keystrokes = {},
-      last_command = nil,
-      active_help = nil,
-    }
+    if view.modal == nil then
+      view.modal = {
+        mode = mode_id,
+        callback = config.plugins.modal.on_key_callbacks[mode_id],
+        helpers = config.plugins.modal.helpers[mode_id],
+        keymap = config.plugins.modal.keymaps[mode_id],
+        caret = width,
+        keystrokes = {},
+        last_command = nil,
+        active_help = nil,
+        notifications = {},
+      }
+    else
+      view.modal.mode = mode_id
+      view.modal.callback = config.plugins.modal.on_key_callbacks[mode_id]
+      view.modal.helpers = config.plugins.modal.helpers[mode_id]
+      view.modal.keymap = config.plugins.modal.keymaps[mode_id]
+      view.modal.caret = width
+    end
     if view.modal.callback == nil then
+      core.warning("MODAL: no callback for mode %s", mode_id)
       view.modal.callback = modal.on_key_pressed__orig
     end
   end
@@ -300,6 +377,7 @@ function keymap.on_key_pressed(k, ...)
   if view:is(CommandView) then
     return modal.on_key_pressed__orig(k, ...)
   end
+
   if view.modal and view.modal.callback then
     return view.modal.callback(k, ...)
   else
@@ -362,37 +440,106 @@ local function spaces(key_len, spacing)
   return res
 end
 
+
+function modal.notify(msg, persistent)
+  table.insert(dv().modal.notifications, {
+    text = msg,
+    mode = persistent,
+    timestamp = system.get_time(),
+  })
+end
+
+local function get_last_notification()
+  local view = dv()
+  if view.modal then
+    local time = system.get_time()
+    local to_remove = 0
+    local result, fading = nil, 1.0
+    for i = #view.modal.notifications, 1, -1 do
+      local notification = view.modal.notifications[i]
+      local t = time - notification.timestamp
+      if notification.mode or t <= modal.config.notification.timeout then
+        result = notification
+        break
+      elseif t < (modal.config.notification.timeout + modal.config.notification.fading) then
+        result = notification
+        fading = 1.0 - (t - modal.config.notification.timeout) / modal.config.notification.fading
+        break
+      else
+        to_remove = to_remove + 1
+      end
+    end
+    if to_remove > 0 then
+      for _ = 1, to_remove do
+        table.remove(view.modal.notifications, #view.modal.notifications)
+      end
+    end
+    return result, fading
+  else
+    return nil, 1.0
+  end
+end
+
+local function copy_color(color)
+  return { color[1], color[2], color[3], color[4] }
+end
+
+
+
 local rvDraw = RootView.draw
 function RootView:draw(...)
   rvDraw(self, ...)
-  if dv().modal.active_help ~= nil then
-    local font = style.code_font
-    local lines = {}
-    local box_h = 0
-    local box_w = 0
-    for _, kv in ipairs(dv().modal.active_help) do
-      local line = kv[1] .. spaces(#kv[1], 8) .. kv[2]
-      local line_w = font:get_width(line)
-      lines[#lines + 1] = line
-      box_h = box_h + font:get_height()
-
-      if line_w > box_w then
-        box_w = line_w
+  if dv().modal then
+    if modal.config.notification.show then
+      local notification, fading = get_last_notification()
+      if notification ~= nil then
+        local msg = notification.text
+        local font = style.code_font
+        local h = font:get_height() + style.helper.padding * 2
+        local w = font:get_width(msg) + style.helper.padding * 2
+        local x = dv().position.x + style.helper.margin
+        local y = dv().position.y + dv().size.y - style.helper.margin - h
+        local bg = copy_color(style.helper.background)
+        local fg = copy_color(style.helper.text)
+        bg[4] = math.floor(bg[4] * fading)
+        fg[4] = math.floor(fg[4] * fading)
+        core.redraw = true
+        renderer.draw_rect(x, y, w, h, bg)
+        x = x + style.helper.padding
+        y = y + style.helper.padding
+        renderer.draw_text(font, msg, x, y, fg)
       end
     end
+    if dv().modal.active_help then
+      local font = style.code_font
+      local lines = {}
+      local box_h = 0
+      local box_w = 0
+      for _, kv in ipairs(dv().modal.active_help) do
+        local line = kv[1] .. spaces(#kv[1], 8) .. kv[2]
+        local line_w = font:get_width(line)
+        lines[#lines + 1] = line
+        box_h = box_h + font:get_height()
 
-    local x, y = pos(self.size, box_w, box_h)
-    local w = box_w + style.helper.padding * 2
-    local h = box_h + style.helper.padding * 2
-    core.redraw = true
-    local bg = style.helper.background
-    local fg = style.helper.text
-    renderer.draw_rect(x, y, w, h, bg)
-    x = x + style.helper.padding
-    y = y + style.helper.padding
-    for _, line in ipairs(lines) do
-      renderer.draw_text(font, line, x, y, fg)
-      y = y + font:get_height()
+        if line_w > box_w then
+          box_w = line_w
+        end
+      end
+      local x, y = pos(dv().size, box_w, box_h)
+      x = dv().position.x + x
+      y = dv().position.y + y
+      local w = box_w + style.helper.padding * 2
+      local h = box_h + style.helper.padding * 2
+      core.redraw = true
+      local bg = style.helper.background
+      local fg = style.helper.text
+      renderer.draw_rect(x, y, w, h, bg)
+      x = x + style.helper.padding
+      y = y + style.helper.padding
+      for _, line in ipairs(lines) do
+        renderer.draw_text(font, line, x, y, fg)
+        y = y + font:get_height()
+      end
     end
   end
 end
