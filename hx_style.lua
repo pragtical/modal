@@ -69,7 +69,7 @@ local function select_LINE()
   for idx, line1, col1, line2, col2 in doc_multiline_selections(false) do
     local lobj = doc().highlighter:get_line(line2)
     if line1 == line2 and (col1 - col2 ~= #lobj.text - 1) then
-      doc():set_selections(idx, line2+1, 0, line1, 1)
+      doc():set_selections(idx, line2 + 1, 0, line1, 1)
     end
   end
 end
@@ -206,12 +206,6 @@ local function concat(t1, t2)
   return t2
 end
 
--- local on_key_pressed__orig = keymap.on_key_pressed
-local function listen_next()
-  -- TODO implement some sort of one time listener
-  core.warning("<r> not implemented yet")
-  modal.go_to_mode(mode.INS)
-end
 
 local function copy()
   if doc() and doc().get_selection then
@@ -224,13 +218,57 @@ local function copy()
   end
 end
 
+local function replace()
+  local view = dv()
+  if view.modal then
+    local seq = modal.split_command(view.modal.last_command.cmd)
+    local last = seq[#seq]
+    if #last > 1 then
+      last = modal.reverse_key_mapping[last]
+    end
+    if last then
+      for idx, line1, col1, line2, col2 in doc_multiline_selections(false) do
+        local c1, c2 = col1, col2
+        if line1 == line2 and col1 == col2 then
+          c2 = c1 + 1
+        end
+        local text = view.doc:get_text(line1, c1, line2, c2)
+        local repl = ''
+        for line in text:gmatch("[^\r\n]*") do
+          if #repl > 0 then
+            repl = repl .. '\n'
+          end
+          repl = repl .. string.rep(last, #line)
+        end
+        if line1 == line2 then
+          view.doc:insert(line1, math.max(c1, c2), repl)
+          view.doc:remove(line1, math.min(c1, c2), line1, math.max(c1, c2))
+        elseif line1 < line2 then
+          view.doc:insert(line2, c2, repl)
+          view.doc:remove(line1, c1, line2, c2)
+        else
+          view.doc:insert(line1, c1, repl)
+          view.doc:remove(line2, c2, line1, c1)
+        end
+        view.doc:set_selections(idx, line1, col1, line2, col2)
+      end
+    end
+  end
+end
+
 config.plugins.modal.base_mode = mode.NOR
+
+local set_mode__orig = modal.set_mode
+function modal.set_mode(mode_id)
+  set_mode__orig(mode_id)
+  modal.notify(mode_id, false)
+end
 
 config.plugins.modal.modes = { mode.NOR, mode.INS, mode.SEL }
 config.plugins.modal.keymaps = {
   NOR = {
     [":"] = "core:find-command",
-    ["<return>"] = {  "command:submit", "dialog:select" },
+    ["<return>"] = { "command:submit", "dialog:select" },
     -- mode change
     ["i"] = { go_to_selection_start, modal.go_to_mode(mode.INS) },
     ["v"] = modal.go_to_mode(mode.SEL),
@@ -248,7 +286,7 @@ config.plugins.modal.keymaps = {
     ["J"] = "doc:join-lines",
     ["\\<"] = unindent,
     [">"] = indent,
-    ["r"] = { delete, listen_next },
+    ["r<.>"] = replace,
     ["R"] = "doc:paste",
     -- search
     ["<space>/"] = "project-search:find",
@@ -295,6 +333,12 @@ config.plugins.modal.keymaps = {
     ["mm"] = { unselect, "bracket-match:move-to-matching" },
     ["ms"] = { unselect, "bracket-match:select-to-matching" },
 
+    -- macro
+    -- TODO implement macor
+    -- ["q"] = { function() modal.notify("macro:play") end, "macro:play" },
+    -- ["Q"] = { function()
+    --   modal.notify("macro:toggle-record")
+    -- end, "macro:toggle-record" },
     -- search
     -- FILE operations
     ["<space>f"] = "core:find-file",
@@ -304,7 +348,7 @@ config.plugins.modal.keymaps = {
     ["<space>b"] = "buffer:picker", -- need plugin tab-switcher
     ["<space>c"] = "doc:toggle-line-comments",
     ["C-c"] = "doc:toggle-line-comments",
-    
+
     -- WINDOWS operations
     ["<f11>"] = "core:toogle-full-screen",
     ["<space>wv"] = { "root:split-right", "root:switch-to-right" },
@@ -398,7 +442,7 @@ local helpers = {
     { "w",  "window mode" },
     { "k",  "show symbol information" },
     { "r",  "rename symbol" },
-    {"c", "comment line"},
+    { "c",  "comment line" },
     { "\\", "toggle project tree" },
     { "l",  "lite-xl mode" },
   },
