@@ -141,7 +141,6 @@ local function apply_mods(key)
   end
   for label, state in pairs(modal.key_modifiers) do
     if state and modal.key_mapping[label] then
-      core.log(label)
       key = modal.key_mapping[label] .. key
     end
   end
