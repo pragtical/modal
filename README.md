@@ -96,23 +96,5 @@ config.plugins.modal.helpers.NORMAL = {
 }
 ```
 
-For more detailed example please look at [hx_style.lua](hx_style.lua) preset.
+For more detailed example please look at [lite-modal-hx]() preset.
 
-### Helix Style Preset
-
-An [helix](helix-editor.com) style configuration is provided and to enable simply add the following to
-you `lite-xl` `init.lua` file:
-
-```lua
-local modal_hx = require "plugins.modal.hx_style"
-```
-
-
-## Installation
-
-Simply clone this repo into your `lite-xl` as follow:
-
-```
-cd ~/.config/lite-xl/
-git clone https://codeberg.org/Mandarancio/lite-modal.git plugins/modal
-```
