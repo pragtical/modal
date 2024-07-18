@@ -335,39 +335,41 @@ end
 
 local caret_width__orig = style.caret_width
 function modal.set_mode(mode_id)
-  local view = dv()
-  if view ~= nil then
-    local c_style = config.plugins.modal.carets[mode_id]
-    if c_style == nil then
-      c_style = modal.caret_style.NORMAL
-    end
-    local width = caret_width__orig
-    if c_style == modal.caret_style.BAR and core.active_view.get_font then
-      width = core.active_view:get_font():get_width(' ')
-    end
-    style.caret_width = width
-    if view.modal == nil then
-      view.modal = {
-        mode = mode_id,
-        callback = config.plugins.modal.on_key_callbacks[mode_id],
-        helpers = config.plugins.modal.helpers[mode_id],
-        keymap = config.plugins.modal.keymaps[mode_id],
-        caret = width,
-        keystrokes = {},
-        last_command = nil,
-        active_help = nil,
-        notifications = {},
-      }
-    else
-      view.modal.mode = mode_id
-      view.modal.callback = config.plugins.modal.on_key_callbacks[mode_id]
-      view.modal.helpers = config.plugins.modal.helpers[mode_id]
-      view.modal.keymap = config.plugins.modal.keymaps[mode_id]
-      view.modal.caret = width
-    end
-    if view.modal.callback == nil then
-      core.warning("MODAL: no callback for mode %s", mode_id)
-      view.modal.callback = modal.on_key_pressed__orig
+  if mode_id ~= nil and mode_id ~= 0 then
+    local view = dv()
+    if view ~= nil then
+      local c_style = config.plugins.modal.carets[mode_id]
+      if c_style == nil then
+        c_style = modal.caret_style.NORMAL
+      end
+      local width = caret_width__orig
+      if c_style == modal.caret_style.BAR and core.active_view.get_font then
+        width = core.active_view:get_font():get_width(' ')
+      end
+      style.caret_width = width
+      if view.modal == nil then
+        view.modal = {
+          mode = mode_id,
+          callback = config.plugins.modal.on_key_callbacks[mode_id],
+          helpers = config.plugins.modal.helpers[mode_id],
+          keymap = config.plugins.modal.keymaps[mode_id],
+          caret = width,
+          keystrokes = {},
+          last_command = nil,
+          active_help = nil,
+          notifications = {},
+        }
+      else
+        view.modal.mode = mode_id
+        view.modal.callback = config.plugins.modal.on_key_callbacks[mode_id]
+        view.modal.helpers = config.plugins.modal.helpers[mode_id]
+        view.modal.keymap = config.plugins.modal.keymaps[mode_id]
+        view.modal.caret = width
+      end
+      if view.modal.callback == nil then
+        core.warning("MODAL: no callback for mode %s", mode_id)
+        view.modal.callback = modal.on_key_pressed__orig
+      end
     end
   end
 end
