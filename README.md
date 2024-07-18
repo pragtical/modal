@@ -96,5 +96,5 @@ config.plugins.modal.helpers.NORMAL = {
 }
 ```
 
-For more detailed example please look at [lite-modal-hx]() preset.
+For more detailed example please look at [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) preset.
 
