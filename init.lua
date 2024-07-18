@@ -64,15 +64,15 @@ end
 
 modal.key_mapping = {
   ['escape'] = "<ESC>",
-  ['left ctrl'] = 'C-',
-  ['right ctrl'] = 'C-',
-  ['left alt'] = 'A-',
-  ['right alt'] = 'A-',
-  ['left shift'] = '',  -- modifier
-  ['right shift'] = '', -- modifier
-  ['capslock'] = '',    -- modifier
-  ['left gui'] = 'M-',
-  ['right gui'] = 'M-',
+  ['left ctrl'] = 'C-',  -- mod
+  ['right ctrl'] = 'C-', -- mod
+  ['left alt'] = 'A-',   -- mod
+  ['right alt'] = 'A-',  -- mod
+  ['left shift'] = '',   -- mod
+  ['right shift'] = '',  -- mod
+  ['capslock'] = '',     -- mod
+  ['left gui'] = 'M-',   -- mod
+  ['right gui'] = 'M-',  -- mod
   ['space'] = '<space>',
   ['backspace'] = '<bkspc>',
   ['delete'] = '<del>',
@@ -88,6 +88,12 @@ modal.key_modifiers = {
   ["left shift"] = false,
   ["right shift"] = false,
   ["capslock"] = false,
+  ["left ctrl"] = false,
+  ["right ctrl"] = false,
+  ["left alt"] = false,
+  ["right alt"] = false,
+  ["left gui"] = false,
+  ["right gui"] = false,
 }
 
 modal.shift_keys = {
@@ -131,7 +137,13 @@ local function apply_mods(key)
   end
   local capslock = modal.key_modifiers['capslock']
   if not (shift == capslock) and #key == 1 then
-    return string.upper(key)
+    key = string.upper(key)
+  end
+  for label, state in pairs(modal.key_modifiers) do
+    if state and modal.key_mapping[label] then
+      core.log(label)
+      key = modal.key_mapping[label] .. key
+    end
   end
   return key
 end
@@ -302,7 +314,7 @@ end
 modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
-  if k == 'left shift' or k == 'right shift' then
+  if k ~= 'capslock' and modal.key_modifiers[k] ~= nil then
     modal.key_modifiers[k] = false
   end
   return modal.on_key_released__orig(k)
