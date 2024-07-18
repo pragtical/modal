@@ -411,7 +411,7 @@ if core.status_view:get_item("status:mode") == nil then
     alignment = StatusView.Item.LEFT,
     get_item = function()
       local mode_str = get_mode()
-      if mode_str == nil then
+      if mode_str == nil or type(mode_str) ~= "string" then
         return { "NO MODE", }
       else
         return { mode_str, }
