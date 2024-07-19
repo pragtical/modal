@@ -129,7 +129,6 @@ function modal.get_mode()
   end
 end
 
-
 local function apply_mods(key)
   local shift = modal.key_modifiers['left shift'] or modal.key_modifiers['right shift']
   if shift and modal.shift_keys[key] then
@@ -280,38 +279,41 @@ function modal.eval_helper(seq)
 end
 
 function modal.eval_current_strokes()
-  dv().modal.active_help = nil
-  local N_repeat = ''
-  local seq = ''
-  for i = 1, #dv().modal.keystrokes do
-    if #seq == 0 and is_number(dv().modal.keystrokes[i]) then
-      N_repeat = N_repeat .. dv().modal.keystrokes[i]
+  local view = dv()
+  if view.modal then
+    view.modal.active_help = nil
+    local N_repeat = ''
+    local seq = ''
+    for i = 1, #view.modal.keystrokes do
+      if #seq == 0 and is_number(view.modal.keystrokes[i]) then
+        N_repeat = N_repeat .. view.modal.keystrokes[i]
+      else
+        seq = seq .. view.modal.keystrokes[i]
+      end
+    end
+    local cmd = modal.get_command(seq)
+    if cmd ~= nil then
+      local N = 1
+      view.modal.keystrokes = {}
+      if #N_repeat > 0 then
+        N = math.floor(tonumber(N_repeat) or error("String is not a number"))
+      end
+      view.modal.current_command = {
+        num = N,
+        cmd = cmd,
+        seq = seq,
+      }
+      for _ = 1, N do
+        modal.eval_cmd(cmd)
+      end
+      view.modal.last_command = view.modal.current_command
+    elseif not modal.is_partial_command(seq) then
+      view.modal.keystrokes = {}
     else
-      seq = seq .. dv().modal.keystrokes[i]
+      modal.eval_helper(seq)
     end
+    return cmd ~= nil
   end
-  local cmd = modal.get_command(seq)
-  if cmd ~= nil then
-    local N = 1
-    dv().modal.keystrokes = {}
-    if #N_repeat > 0 then
-      N = math.floor(tonumber(N_repeat) or error("String is not a number"))
-    end
-    dv().modal.current_command = {
-      num = N,
-      cmd = cmd,
-      seq = seq,
-    }
-    for _ = 1, N do
-      modal.eval_cmd(cmd)
-    end
-    dv().modal.last_command = dv().modal.current_command
-  elseif not modal.is_partial_command(seq) then
-    dv().modal.keystrokes = {}
-  else
-    modal.eval_helper(seq)
-  end
-  return cmd ~= nil
 end
 
 modal.on_key_released__orig = keymap.on_key_released
