@@ -151,7 +151,6 @@ function modal.convert_stroke(key)
     modal.key_modifiers[key] = not modal.key_modifiers[key]
     return ''
   end
-  key = apply_mods(key)
   if modal.key_mapping[key] ~= nil then
     return modal.key_mapping[key]
   end
@@ -159,6 +158,7 @@ function modal.convert_stroke(key)
   if #key > 1 then
     return "<" .. key .. ">"
   end
+  key = apply_mods(key)
   return key
 end
 
