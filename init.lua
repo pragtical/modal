@@ -121,7 +121,7 @@ modal.shift_keys = {
   ["/"] = "?",
 }
 
-local function get_mode()
+function modal.get_mode()
   if dv() ~= nil and dv().modal ~= nil then
     return dv().modal.mode
   else
@@ -425,7 +425,7 @@ if core.status_view:get_item("status:mode") == nil then
     name = "status:mode",
     alignment = StatusView.Item.LEFT,
     get_item = function()
-      local mode_str = get_mode()
+      local mode_str = modal.get_mode()
       if mode_str == nil or type(mode_str) ~= "string" then
         return { "NO MODE", }
       else
