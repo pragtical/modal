@@ -264,11 +264,11 @@ end
 function modal.redo_command()
   local view = dv()
   if view.modal.last_command ~= nil then
-    local command = view.modal.last_command
-    for _ = 1, command.num do
-      modal.eval_cmd(command.cmd)
+    local last_cmd = view.modal.last_command
+    view.modal.current_command = last_cmd
+    for _ = 1, last_cmd.num do
+      modal.eval_cmd(last_cmd.cmd)
     end
-    view.modal.current_command = command
   end
 end
 
@@ -282,15 +282,15 @@ end
 function modal.eval_current_strokes()
   dv().modal.active_help = nil
   local N_repeat = ''
-  dv().modal.seq = ''
+  local seq = ''
   for i = 1, #dv().modal.keystrokes do
-    if #dv().modal.seq == 0 and is_number(dv().modal.keystrokes[i]) then
+    if #seq == 0 and is_number(dv().modal.keystrokes[i]) then
       N_repeat = N_repeat .. dv().modal.keystrokes[i]
     else
-      dv().modal.seq = dv().modal.seq .. dv().modal.keystrokes[i]
+      seq = seq .. dv().modal.keystrokes[i]
     end
   end
-  local cmd = modal.get_command(dv().modal.seq)
+  local cmd = modal.get_command(seq)
   if cmd ~= nil then
     local N = 1
     dv().modal.keystrokes = {}
@@ -300,15 +300,16 @@ function modal.eval_current_strokes()
     dv().modal.current_command = {
       num = N,
       cmd = cmd,
+      seq = seq,
     }
     for _ = 1, N do
       modal.eval_cmd(cmd)
     end
     dv().modal.last_command = dv().modal.current_command
-  elseif not modal.is_partial_command(dv().modal.seq) then
+  elseif not modal.is_partial_command(seq) then
     dv().modal.keystrokes = {}
   else
-    modal.eval_helper(dv().modal.seq)
+    modal.eval_helper(seq)
   end
   return cmd ~= nil
 end
