@@ -237,12 +237,12 @@ function modal.get_command(seq)
   return nil
 end
 
-local function eval_cmd(cmd)
+function modal.eval_cmd(cmd)
   if cmd == nil then
     return nil
   elseif type(cmd) == "table" then
     for _, scmd in pairs(cmd) do
-      eval_cmd(scmd)
+      modal.eval_cmd(scmd)
     end
   elseif type(cmd) == "string" then
     if command.map[cmd] then
@@ -252,7 +252,7 @@ local function eval_cmd(cmd)
       if view then
         for i = 1, #cmd do
           local scmd = string.sub(cmd, i, i)
-          eval_cmd(view.modal.keymap[scmd])
+          modal.eval_cmd(view.modal.keymap[scmd])
         end
       end
     end
@@ -264,9 +264,11 @@ end
 function modal.redo_command()
   local view = dv()
   if view.modal.last_command ~= nil then
-    for _ in 1, view.modal.last_command.num do
-      eval_cmd(view.modal.last_command.cmd)
+    local command = view.modal.last_command
+    for _ = 1, command.num do
+      modal.eval_cmd(command.cmd)
     end
+    view.modal.current_command = command
   end
 end
 
@@ -280,32 +282,33 @@ end
 function modal.eval_current_strokes()
   dv().modal.active_help = nil
   local N_repeat = ''
-  local seq = ''
+  dv().modal.seq = ''
   for i = 1, #dv().modal.keystrokes do
-    if #seq == 0 and is_number(dv().modal.keystrokes[i]) then
+    if #dv().modal.seq == 0 and is_number(dv().modal.keystrokes[i]) then
       N_repeat = N_repeat .. dv().modal.keystrokes[i]
     else
-      seq = seq .. dv().modal.keystrokes[i]
+      dv().modal.seq = dv().modal.seq .. dv().modal.keystrokes[i]
     end
   end
-  local cmd = modal.get_command(seq)
+  local cmd = modal.get_command(dv().modal.seq)
   if cmd ~= nil then
     local N = 1
     dv().modal.keystrokes = {}
     if #N_repeat > 0 then
       N = math.floor(tonumber(N_repeat) or error("String is not a number"))
     end
-    dv().modal.last_command = {
+    dv().modal.current_command = {
       num = N,
-      cmd = seq
+      cmd = cmd,
     }
     for _ = 1, N do
-      eval_cmd(cmd)
+      modal.eval_cmd(cmd)
     end
-  elseif not modal.is_partial_command(seq) then
+    dv().modal.last_command = dv().modal.current_command
+  elseif not modal.is_partial_command(dv().modal.seq) then
     dv().modal.keystrokes = {}
   else
-    modal.eval_helper(seq)
+    modal.eval_helper(dv().modal.seq)
   end
   return cmd ~= nil
 end
@@ -367,6 +370,7 @@ function modal.set_mode(mode_id)
           caret = width,
           keystrokes = {},
           last_command = nil,
+          current_command = nil,
           active_help = nil,
           notifications = {},
         }
