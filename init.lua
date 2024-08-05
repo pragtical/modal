@@ -300,10 +300,11 @@ function modal.eval_current_strokes()
       end
       view.modal.current_command = {
         num = N,
+        n_repeat = N_repeat,
         cmd = cmd,
         seq = seq,
       }
-      for _ = 1, N do
+      for _ = 1, view.modal.current_command.num do
         modal.eval_cmd(cmd)
       end
       view.modal.last_command = view.modal.current_command
