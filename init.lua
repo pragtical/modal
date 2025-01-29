@@ -284,12 +284,14 @@ function modal.eval_current_strokes()
     view.modal.active_help = nil
     local N_repeat = ''
     local seq = ''
+    view.modal.keyhelper = ''
     for i = 1, #view.modal.keystrokes do
       if #seq == 0 and is_number(view.modal.keystrokes[i]) then
         N_repeat = N_repeat .. view.modal.keystrokes[i]
       else
         seq = seq .. view.modal.keystrokes[i]
       end
+      view.modal.keyhelper = view.modal.keyhelper .. view.modal.keystrokes[i]
     end
     local cmd = modal.get_command(seq)
     if cmd ~= nil then
@@ -375,6 +377,7 @@ function modal.set_mode(mode_id)
           keystrokes = {},
           last_command = nil,
           current_command = nil,
+          keyhelper = "",
           active_help = nil,
           notifications = {},
         }
@@ -438,6 +441,24 @@ if core.status_view:get_item("status:mode") == nil then
     end,
     position = 1,
     tooltip = "mode",
+    separator = core.status_view.separator2
+  })
+end
+
+if core.status_view:get_item("status:current_cmd") == nil then
+  core.status_view:add_item({
+    name = "status:current_cmd",
+    alignment = StatusView.Item.LEFT,
+    get_item = function()
+      local view = dv()
+      local str = ""
+      if view ~= nil and view.modal ~= nil then
+        str = view.modal.keyhelper
+      end
+      return { str }
+    end,
+    position = 2,
+    tooltip = "current keystrokes",
     separator = core.status_view.separator2
   })
 end
