@@ -184,7 +184,7 @@ local function statusbar_strokes()
   return { str }
 end
 
-function modal.set_statusbar()
+function modal.set_status_bar()
   if config.plugins.modal.status_bar.mode == true and core.status_view:get_item("status:modal_mode") == nil then
     core.status_view:add_item({
       name = "status:modal_mode",
@@ -600,6 +600,6 @@ function RootView:draw(...)
   end
 end
 
-modal.set_statusbar()
+modal.set_status_bar()
 
 return modal

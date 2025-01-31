@@ -9,15 +9,16 @@ A fully customizable modal editing experience for Lite Xl
 
 The configuration of the modal experience can be done via the follow parameters:
 
-| Field                                  | Default | Comment                                                   |
-|:---------------------------------------|:-------:|:----------------------------------------------------------| 
-|`config.plugins.modal.base_mode`        | `nil`   | default mode when opening a new document/session          |
-|`config.plugins.modal.modes`            | `{}`    | enumerate all the possible modes available                |
-|`config.plugins.modal.keymaps`          | `{}`    | table containing keymaps for each available mode          |
-|`config.plugins.modal.on_key_callbacks` | `{}`    | table containing `on_key_pressed` callbacks for each mode |
-|`config.plugins.modal.carets`           | `{}`    | carets styles for each mode                               |
-|`config.plugins.modal.helpers`          | `{}`    | available command helpers per mode                        |
-|`config.plugins.modal.show_helpers`     | `true`  | enable or disable command helper                          |
+| Field                                  | Default                     | Comment                                                   |
+|:---------------------------------------|:---------------------------:|:----------------------------------------------------------| 
+|`config.plugins.modal.base_mode`        | `nil`                       | default mode when opening a new document/session          |
+|`config.plugins.modal.modes`            | `{}`                        | enumerate all the possible modes available                |
+|`config.plugins.modal.keymaps`          | `{}`                        | table containing keymaps for each available mode          |
+|`config.plugins.modal.on_key_callbacks` | `{}`                        | table containing `on_key_pressed` callbacks for each mode |
+|`config.plugins.modal.carets`           | `{}`                        | carets styles for each mode                               |
+|`config.plugins.modal.helpers`          | `{}`                        | available command helpers per mode                        |
+|`config.plugins.modal.show_helpers`     | `true`                      | enable or disable command helper                          |
+|`config.plugins.modal.status_bar`       | `{mode=true, strokes=true}` | configure the status bar widget                           |
 
 Additionally the helper styling can be changed:
 
@@ -98,3 +99,21 @@ config.plugins.modal.helpers.NORMAL = {
 
 For more detailed example please look at [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) preset.
 
+#### Status bar
+
+`lite-modal` provide a simple status widget positioned on the bottom left of the `lite-xl` status bar.
+This widget can contains the following information:
+ - The current mode, enabled by default and configurable in the variable `config.plugins.modal.status_bar.mode` (boolean)
+ - The current keystroke, enabled by default and configurable in the variable `config.plugins.modal.status_bar.strokes` (boolean)
+
+If you want to disable one or more of this widgets simply configure in your `init.lua`:
+
+```lua
+local config = require "core.config"
+local modal = require "plugins.modal"
+
+
+config.plugins.modal.status_bar.mode = true -- enable mode widget (not needed, just for example)
+config.plugins.modal.status_bar.strokes = false -- disable strokes widget
+modal.set_status_bar() -- apply the changes
+```
