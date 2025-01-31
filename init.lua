@@ -20,6 +20,10 @@ config.plugins.modal = common.merge({
   carets = {},
   helpers = {},
   show_helpers = true,
+  status_bar = {
+    mode = true,
+    strokes = true,
+  }
 }, config.plugins.modal)
 
 modal.caret_style = { NORMAL = 0, BAR = 1, }
@@ -160,6 +164,52 @@ function modal.convert_stroke(key)
   end
   key = apply_mods(key)
   return key
+end
+
+local function statusbar_mode()
+  local mode_str = modal.get_mode()
+  if mode_str == nil or type(mode_str) ~= "string" then
+    return { "NO MODE", }
+  else
+    return { mode_str, }
+  end
+end
+
+local function statusbar_strokes()
+  local view = dv()
+  local str = ""
+  if view ~= nil and view.modal ~= nil then
+    str = view.modal.keyhelper
+  end
+  return { str }
+end
+
+function modal.set_statusbar()
+  if config.plugins.modal.status_bar.mode == true and core.status_view:get_item("status:modal_mode") == nil then
+    core.status_view:add_item({
+      name = "status:modal_mode",
+      alignment = StatusView.Item.LEFT,
+      get_item = statusbar_mode,
+      position = 1,
+      tooltip = "mode",
+      separator = core.status_view.separator2
+    })
+  elseif config.plugins.modal.status_bar.mode == false and core.status_view:get_item("status:modal_mode") ~= nil then
+    core.status_view:remove_item("status:modal_mode")
+  end
+
+  if config.plugins.modal.status_bar.strokes == true and core.status_view:get_item("status:modal_strokes") == nil then
+    core.status_view:add_item({
+      name = "status:modal_strokes",
+      alignment = StatusView.Item.LEFT,
+      get_item = statusbar_strokes,
+      position = 2,
+      tooltip = "current keystrokes",
+      separator = core.status_view.separator2
+    })
+  elseif config.plugins.modal.status_bar.strokes == false and core.status_view:get_item("status:modal_strokes") ~= nil then
+    core.status_view:remove_item("status:modal_strokes")
+  end
 end
 
 local function is_number(x)
@@ -427,42 +477,6 @@ function DocView:update(...)
   DocView__update__orig(self, ...)
 end
 
-if core.status_view:get_item("status:mode") == nil then
-  core.status_view:add_item({
-    name = "status:mode",
-    alignment = StatusView.Item.LEFT,
-    get_item = function()
-      local mode_str = modal.get_mode()
-      if mode_str == nil or type(mode_str) ~= "string" then
-        return { "NO MODE", }
-      else
-        return { mode_str, }
-      end
-    end,
-    position = 1,
-    tooltip = "mode",
-    separator = core.status_view.separator2
-  })
-end
-
-if core.status_view:get_item("status:current_cmd") == nil then
-  core.status_view:add_item({
-    name = "status:current_cmd",
-    alignment = StatusView.Item.LEFT,
-    get_item = function()
-      local view = dv()
-      local str = ""
-      if view ~= nil and view.modal ~= nil then
-        str = view.modal.keyhelper
-      end
-      return { str }
-    end,
-    position = 2,
-    tooltip = "current keystrokes",
-    separator = core.status_view.separator2
-  })
-end
-
 local function pos(win_size, width, height)
   local y = win_size.y - style.helper.margin - style.helper.padding * 2 - height
   if style.helper.alignement == modal.align.RIGHT then
@@ -586,5 +600,6 @@ function RootView:draw(...)
   end
 end
 
-core.log("MODAL Ready")
+modal.set_statusbar()
+
 return modal
