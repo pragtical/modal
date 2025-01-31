@@ -10,6 +10,8 @@ local RootView = require "core.rootview"
 local common = require "core.common"
 local config = require "core.config"
 
+local KeyMapView = require "plugins.modal.keymapview"
+
 local modal = {}
 
 core.modal = modal
@@ -427,7 +429,7 @@ local function convert_action_to_string(action)
   end
 end
 
-local function show_help(keys)
+local function show_help(mode, keys)
   if dv() ~= nil and dv().modal ~= nil then
     local helper = {}
     for strokes, action in pairs(keys) do
@@ -444,7 +446,8 @@ local function show_help(keys)
       end
       helper[#helper + 1] = { strokes, action_str }
     end
-    dv().modal.active_help = helper
+    local node = core.root_view:get_active_node_default()
+    node:add_view(KeyMapView(mode, helper))
   end
 end
 
@@ -453,7 +456,7 @@ local function modal_help()
   if mode ~= nil then
     local key_map = config.plugins.modal.keymaps[mode]
     if key_map ~= nil then
-      show_help(key_map)
+      show_help(mode,key_map)
     end
   end
 end
