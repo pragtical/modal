@@ -11,6 +11,7 @@ local common = require "core.common"
 local config = require "core.config"
 
 local modal = {}
+
 core.modal = modal
 
 config.plugins.modal = common.merge({
@@ -19,6 +20,7 @@ config.plugins.modal = common.merge({
   on_key_callbacks = {},
   carets = {},
   helpers = {},
+  keymaps = {},
   show_helpers = true,
   status_bar = {
     mode = true,
@@ -42,6 +44,7 @@ modal.config = {
   }
 }
 
+modal.fns = {}
 
 -- Helper styling
 style["helper"] = {
@@ -53,9 +56,12 @@ style["helper"] = {
 }
 
 function modal.go_to_mode(mode)
-  return function()
+  local fn = function()
     modal.set_mode(mode)
   end
+  local key = "modal:set-mode-" .. mode
+  modal.fns[fn] = key
+  return fn
 end
 
 local function dv()
@@ -380,7 +386,7 @@ end
 
 modal.on_key_pressed__orig = keymap.on_key_pressed
 
-function modal.on_key_passtrought(k, ...)
+function modal.on_key_passthrough(k, ...)
   local key = modal.convert_stroke(k)
   if key and #key > 1 then
     dv().modal.keystrokes[#dv().modal.keystrokes + 1] = key
@@ -403,6 +409,82 @@ function modal.on_key_command_only(k, ...)
   return true
 end
 
+local function convert_action_to_string(action)
+  if type(action) == "string" then
+    return action
+  elseif type(action) == "function" then
+    if modal.fns[action] ~= nil then
+      return modal.fns[action]
+    end
+    for k, v in pairs(modal) do
+      if v == action then
+        return k
+      end
+    end
+    return "unknow:" .. tostring(action)
+  else
+    return "ERROR<" .. tostring(action) .. ">"
+  end
+end
+
+local function show_help(keys)
+  if dv() ~= nil and dv().modal ~= nil then
+    local helper = {}
+    for strokes, action in pairs(keys) do
+      local action_str = ""
+      if type(action) == "table" then
+        for i, v in pairs(action) do
+          if i > 1 then
+            action_str = action_str .. ", "
+          end
+          action_str = action_str .. convert_action_to_string(v)
+        end
+      else
+        action_str = convert_action_to_string(action)
+      end
+      helper[#helper + 1] = { strokes, action_str }
+    end
+    dv().modal.active_help = helper
+  end
+end
+
+local function modal_help()
+  local mode = modal:get_mode()
+  if mode ~= nil then
+    local key_map = config.plugins.modal.keymaps[mode]
+    if key_map ~= nil then
+      show_help(key_map)
+    end
+  end
+end
+
+modal.help = modal_help
+
+local function get_keymap(mode_id)
+  local map = config.plugins.modal.keymaps[mode_id]
+  if map ~= nil then
+    return map
+  end
+  return {}
+end
+
+local function get_helpers(mode_id)
+  local helpers = config.plugins.modal.helpers[mode_id]
+  if helpers ~= nil then
+    return helpers
+  end
+  return {}
+end
+
+local function get_callback(mode_id)
+  local fn = config.plugins.modal.on_key_callbacks[mode_id]
+  if fn == nil then
+    return modal.on_key_passthrough
+  else
+    return fn
+  end
+end
+
 local caret_width__orig = style.caret_width
 function modal.set_mode(mode_id)
   if mode_id ~= nil and mode_id ~= 0 then
@@ -420,9 +502,9 @@ function modal.set_mode(mode_id)
       if view.modal == nil then
         view.modal = {
           mode = mode_id,
-          callback = config.plugins.modal.on_key_callbacks[mode_id],
-          helpers = config.plugins.modal.helpers[mode_id],
-          keymap = config.plugins.modal.keymaps[mode_id],
+          callback = get_callback(mode_id),
+          helpers = get_helpers(mode_id),
+          keymap = get_keymap(mode_id),
           caret = width,
           keystrokes = {},
           last_command = nil,
@@ -432,17 +514,19 @@ function modal.set_mode(mode_id)
           notifications = {},
         }
       else
+        view.modal.keyhelper = ""
         view.modal.mode = mode_id
-        view.modal.callback = config.plugins.modal.on_key_callbacks[mode_id]
-        view.modal.helpers = config.plugins.modal.helpers[mode_id]
-        view.modal.keymap = config.plugins.modal.keymaps[mode_id]
+        view.modal.callback = get_callback(mode_id)
+        view.modal.helpers = get_helpers(mode_id)
+        view.modal.keymap = get_keymap(mode_id)
         view.modal.caret = width
       end
       if view.modal.callback == nil then
-        core.warning("MODAL: no callback for mode %s", mode_id)
+        core.log("MODAL: no callback for mode %s", mode_id)
         view.modal.callback = modal.on_key_pressed__orig
       end
     end
+    modal.notify(mode_id, false)
   end
 end
 
@@ -571,8 +655,14 @@ function RootView:draw(...)
       local lines = {}
       local box_h = 0
       local box_w = 0
+      local spacing = 8
       for _, kv in ipairs(dv().modal.active_help) do
-        local line = kv[1] .. spaces(#kv[1], 8) .. kv[2]
+        if #kv[1] >= spacing - 1 then
+          spacing = #kv[1] + 1
+        end
+      end
+      for _, kv in ipairs(dv().modal.active_help) do
+        local line = kv[1] .. spaces(#kv[1], spacing) .. kv[2]
         local line_w = font:get_width(line)
         lines[#lines + 1] = line
         box_h = box_h + font:get_height()
@@ -599,6 +689,11 @@ function RootView:draw(...)
     end
   end
 end
+
+command.add(nil, {
+  ["modal:help"] = modal_help,
+  ["modal:redo"] = modal.redo_command,
+})
 
 modal.set_status_bar()
 
