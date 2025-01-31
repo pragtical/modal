@@ -47,7 +47,7 @@ Then decide which kind of `on_key_pressed` call back to use (*or define your own
 
 ```lua
 config.plugins.modal.on_key_callbacks.NORMAL = modal.on_key_command_only
-config.plugins.modal.on_key_callbacks.INSERT = modal.on_key_passtrought
+config.plugins.modal.on_key_callbacks.INSERT = modal.on_key_passthrough
 config.plugins.modal.on_key_callbacks.VISUAL = modal.on_key_command_only
 ```
 
@@ -117,3 +117,55 @@ config.plugins.modal.status_bar.mode = true -- enable mode widget (not needed, j
 config.plugins.modal.status_bar.strokes = false -- disable strokes widget
 modal.set_status_bar() -- apply the changes
 ```
+
+
+## Simple Preset
+
+Below a simple example of a demo configuration that you can simply paste in your `init.lua`:
+
+```lua
+local config = require "core.config"
+local modal = require "plugins.modal"
+
+config.plugins.modal.status_bar.strokes = false
+modal.set_status_bar()
+
+config.plugins.modal.modes = { "Move", "Edit", "Jump" }
+config.plugins.modal.base_mode = "Move"
+
+config.plugins.modal.on_key_callbacks.Move = modal.on_key_command_only
+config.plugins.modal.on_key_callbacks.Edit = modal.on_key_passthrough
+config.plugins.modal.on_key_callbacks.Jump = modal.on_key_command_only
+
+config.plugins.modal.keymaps.Move = {
+  ["e"] = modal.go_to_mode("Edit"),
+  ["j"] = modal.go_to_mode("Jump"),
+  ["<right>"] = "doc:move-to-next-char",
+  ["<left>"] = "doc:move-to-previous-char",
+  ["<up>"] = "doc:move-to-previous-line",
+  ["<down>"] = "doc:move-to-next-line",
+  [":"] = "core:find-command",
+  ["<space>?"] = "modal:help",
+}
+
+config.plugins.modal.keymaps.Edit = {
+  ["<ESC>"] = modal.go_to_mode("Move"),
+  ["C-P"] = "core:find-command",
+  ["C-?"] = "modal:help",
+}
+
+config.plugins.modal.keymaps.Jump = {
+  ["<ESC>"] = modal.go_to_mode("Move"),
+  ["e"] = modal.go_to_mode("Edit"),
+  ["<right>"] = { "doc:select-none", "doc:select-to-next-word-end" },
+  ["<left>"] = { "doc:select-none", "doc:select-to-previous-word-start" },
+  ["<up>"] = { "doc:select-none", "doc:move-to-previous-line", "doc:move-to-end-of-line", "doc:select-to-previous-word-start" },
+  ["<down>"] = { "doc:select-none", "doc:move-to-next-line", "doc:move-to-start-of-line", "doc:select-to-next-word-end" },
+  [":"] = "core:find-command",
+  ["<space>?"] = "modal:help",
+}
+```
+
+## Helix Preset
+
+For an almost full replica of the [Helix](helix-editor.com) modal experience please use the [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) preset.
