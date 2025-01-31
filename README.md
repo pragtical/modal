@@ -118,8 +118,16 @@ config.plugins.modal.status_bar.strokes = false -- disable strokes widget
 modal.set_status_bar() -- apply the changes
 ```
 
+## Commands
 
-## Simple Preset
+Two commands are added to lite:
+
+ - `modal:redo` that redo the last executed command (N times if a number modifier is specified, a la vi)
+ - `modal:help` to show the current keymap active
+
+## Presets
+
+### Simple Preset
 
 Below a simple example of a demo configuration that you can simply paste in your `init.lua`:
 
@@ -166,6 +174,6 @@ config.plugins.modal.keymaps.Jump = {
 }
 ```
 
-## Helix Preset
+### Helix Preset
 
 For an almost full replica of the [Helix](helix-editor.com) modal experience please use the [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) preset.
