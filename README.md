@@ -55,13 +55,13 @@ For example `10 ctrl+/` will execute 10 times the action linked to the `ctrl+/` 
 
 Below some equivalent representation with previous version
 
-| Modal 0.4.0                  | Modal 0.5.0       |
-| :--------------------------- | :---------------- |
-| `<space>f`                   | `space f`         |
-| `<space>F` or `<space>S-f`   | `space shift+f`   |
-| `C-f`                        | `ctrl+f`          |
-| `F<.>` or `S-f<.>`           | `shfit+f <.>`     |
-| `<space>wQ` or `<space>wS-q` | `space w shfit+q` |
+| Modal 0.4.0  | Modal 0.5.0       |
+| :----------- | :---------------- |
+| `<space>f`   | `space f`         |
+| `<space>F` ` | `space shift+f`   |
+| `C-f`        | `ctrl+f`          |
+| `F<.>`       | `shfit+f <.>`     |
+| `<space>wQ`  | `space w shfit+q` |
 
 ### Configuration details
 
