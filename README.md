@@ -125,9 +125,9 @@ config.plugins.modal.carets.NORMAL = modal.caret_style.BAR
 
 -- helper definition
 config.plugins.modal.helpers.NORMAL = {
-  ["<space>"] = {
+  ["space"] = {
     {"f", "open file picker"},
-    {"P", "open project picker"},--...
+    {"shift+p", "open project picker"},--...
   }
 }
 ```
