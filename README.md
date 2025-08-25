@@ -4,31 +4,64 @@ A fully customizable modal editing experience for Lite Xl
 
 ![](intro.gif)
 
-
 ## Configuration
 
 The configuration of the modal experience can be done via the follow parameters:
 
-| Field                                  | Default                     | Comment                                                   |
-|:---------------------------------------|:---------------------------:|:----------------------------------------------------------| 
-|`config.plugins.modal.base_mode`        | `nil`                       | default mode when opening a new document/session          |
-|`config.plugins.modal.modes`            | `{}`                        | enumerate all the possible modes available                |
-|`config.plugins.modal.keymaps`          | `{}`                        | table containing keymaps for each available mode          |
-|`config.plugins.modal.on_key_callbacks` | `{}`                        | table containing `on_key_pressed` callbacks for each mode |
-|`config.plugins.modal.carets`           | `{}`                        | carets styles for each mode                               |
-|`config.plugins.modal.helpers`          | `{}`                        | available command helpers per mode                        |
-|`config.plugins.modal.show_helpers`     | `true`                      | enable or disable command helper                          |
-|`config.plugins.modal.status_bar`       | `{mode=true, strokes=true}` | configure the status bar widget                           |
+| Field                                   |           Default           | Comment                                                   |
+| :-------------------------------------- | :-------------------------: | :-------------------------------------------------------- |
+| `config.plugins.modal.base_mode`        |            `nil`            | default mode when opening a new document/session          |
+| `config.plugins.modal.modes`            |            `{}`             | enumerate all the possible modes available                |
+| `config.plugins.modal.keymaps`          |            `{}`             | table containing keymaps for each available mode          |
+| `config.plugins.modal.on_key_callbacks` |            `{}`             | table containing `on_key_pressed` callbacks for each mode |
+| `config.plugins.modal.carets`           |            `{}`             | carets styles for each mode                               |
+| `config.plugins.modal.helpers`          |            `{}`             | available command helpers per mode                        |
+| `config.plugins.modal.show_helpers`     |           `true`            | enable or disable command helper                          |
+| `config.plugins.modal.status_bar`       | `{mode=true, strokes=true}` | configure the status bar widget                           |
 
 Additionally the helper styling can be changed:
 
-| Field                    | Default            | Comment                 |
-|:-------------------------|:------------------:|:------------------------| 
-|`style.helper.background` | `#000000C8`        | helper background color |
-|`style.helper.text`       | `#FFFFFFDC`        | helper text color       |
-|`style.helper.padding`    | 10                 | helper internal padding |
-|`style.helper.margin`     | 10                 | helper external margin  |
-|`style.helper.alignement` | `modal.align.LEFT` | helper alignement       |
+| Field                     |      Default       | Comment                 |
+| :------------------------ | :----------------: | :---------------------- |
+| `style.helper.background` |    `#000000C8`     | helper background color |
+| `style.helper.text`       |    `#FFFFFFDC`     | helper text color       |
+| `style.helper.padding`    |         10         | helper internal padding |
+| `style.helper.margin`     |         10         | helper external margin  |
+| `style.helper.alignement` | `modal.align.LEFT` | helper alignement       |
+
+### Key bindings
+
+To define key bindings an extension to standard lite-xl syntax in order to implement the possibility to concatenate
+multiple keystrokes:
+
+- `KEY` is a single key binding
+- `MOD+KEY` means that the key `KEY` is pressed while modifier `MOD` is active, e.g. `ctrl+tab`
+- `KEY_A KEY_B` is a sequence of two strokes of `KEY_A` and `KEY_B`, e.g. `d d`
+
+#### Any key catcher
+
+`modal` support the option to catch any keystroke, but with the condition to be the last keystroke of a sequence.
+The key is then stored, and your user function can use it to do action linked to the key, for example jump to the next matching character
+
+In both `modal` and `lite-xl` syntax to match any character use `<.>` placeholder.
+
+#### Numbers/Digits
+
+Numbers can not be used in keystrokes as they are used as modifiers to repeat a certain number of times the action.
+
+For example `10 ctrl+/` will execute 10 times the action linked to the `ctrl+/` sequence.
+
+#### Equivalence with v0.4.0 syntax
+
+Below some equivalent representation with previous version
+
+| Modal 0.4.0                  | Modal 0.5.0       |
+| :--------------------------- | :---------------- |
+| `<space>f`                   | `space f`         |
+| `<space>F` or `<space>S-f`   | `space shift+f`   |
+| `C-f`                        | `ctrl+f`          |
+| `F<.>` or `S-f<.>`           | `shfit+f <.>`     |
+| `<space>wQ` or `<space>wS-q` | `space w shfit+q` |
 
 ### Configuration details
 
@@ -37,13 +70,14 @@ It is possible to configure any number of modes in the `modal.modes` table, for 
 ```lua
 config.plugins.modal.modes = {"NORMAL", "INSERT", "VISUAL"}
 ```
-Then you should decide wich mode is the base/default mode for example:
+
+Then you should decide which mode is the base/default mode for example:
 
 ```lua
 config.plugins.modal.base_mode = "NORMAL"
 ```
 
-Then decide which kind of `on_key_pressed` call back to use (*or define your owns*):
+Then decide which kind of `on_key_pressed` call back to use (_or define your owns_):
 
 ```lua
 config.plugins.modal.on_key_callbacks.NORMAL = modal.on_key_command_only
@@ -52,11 +86,11 @@ config.plugins.modal.on_key_callbacks.VISUAL = modal.on_key_command_only
 ```
 
 The callback `on_key_command_only` will only register the keystrokes and execute
-the matched commands but will not forward the strokes to `lite-xl`. This will allow to 
+the matched commands but will not forward the strokes to `lite-xl`. This will allow to
 reproduce most modal editing stuff.
 
 The callback `on_key_passtrought` will register the keystrokes and execute commands (if matched)
-and will pass the strokes to `lite-xl`, usefull for *editing* modes.
+and will pass the strokes to `lite-xl`, usefull for _editing_ modes.
 
 You can define your own logics if you want something different.
 
@@ -67,23 +101,24 @@ config.plugins.modal.keymaps.NORMAL = {
   ["i"] = modal.go_to_mode("INSERT"), -- function call back
   ["v"] = modal.go_to_mode("VISUAL"),
   ["u"] = "doc:undo",
-  ["<left>"] = {"doc:move-to-previous-char", "dialog:previous-entry"},
+  ["left"] = {"doc:move-to-previous-char", "dialog:previous-entry"},
   ["j"] = "doc:move-to-next-line",
-  ["<space>f"] = "core:open-file",
-  ["P"] = "jp", -- other sequence 
+  ["space f"] = "core:open-file",
+  ["shift+p"] = "jp", -- other sequence
   -- .....
 }
 config.plugins.modal.keymaps.INSERT = {
-  ["<ESC>"] = modal.go_to_mode("NORMAL"),
+  ["escape"] = modal.go_to_mode("NORMAL"),
 }
 -- ...
 ```
 
 Each sequence can execute one or more commands, the commands can be functions or string.
-If it is a string and it match another sequence, the sequence command is executed, otherwise 
+If it is a string and it match another sequence, the sequence command is executed, otherwise
 it will execute as a `lite-xl` command.
 
-Optionally it is possible to configure additional features: 
+Optionally it is possible to configure additional features:
+
 ```lua
 -- define BAR caret
 config.plugins.modal.carets.NORMAL = modal.caret_style.BAR
@@ -103,8 +138,9 @@ For more detailed example please look at [lite-modal-hx](https://codeberg.org/Ma
 
 `lite-modal` provide a simple status widget positioned on the bottom left of the `lite-xl` status bar.
 This widget can contains the following information:
- - The current mode, enabled by default and configurable in the variable `config.plugins.modal.status_bar.mode` (boolean)
- - The current keystroke, enabled by default and configurable in the variable `config.plugins.modal.status_bar.strokes` (boolean)
+
+- The current mode, enabled by default and configurable in the variable `config.plugins.modal.status_bar.mode` (boolean)
+- The current keystroke, enabled by default and configurable in the variable `config.plugins.modal.status_bar.strokes` (boolean)
 
 If you want to disable one or more of this widgets simply configure in your `init.lua`:
 
@@ -122,8 +158,8 @@ modal.set_status_bar() -- apply the changes
 
 Two commands are added to lite:
 
- - `modal:redo` that redo the last executed command (N times if a number modifier is specified, a la vi)
- - `modal:help` to show the current keymap active
+- `modal:redo` that redo the last executed command (N times if a number modifier is specified, a la vi)
+- `modal:help` to show the current keymap active
 
 ## Presets
 
@@ -148,29 +184,29 @@ config.plugins.modal.on_key_callbacks.Jump = modal.on_key_command_only
 config.plugins.modal.keymaps.Move = {
   ["e"] = modal.go_to_mode("Edit"),
   ["j"] = modal.go_to_mode("Jump"),
-  ["<right>"] = "doc:move-to-next-char",
-  ["<left>"] = "doc:move-to-previous-char",
-  ["<up>"] = "doc:move-to-previous-line",
-  ["<down>"] = "doc:move-to-next-line",
-  [":"] = "core:find-command",
-  ["<space>?"] = "modal:help",
+  ["right"] = "doc:move-to-next-char",
+  ["left"] = "doc:move-to-previous-char",
+  ["up"] = "doc:move-to-previous-line",
+  ["down"] = "doc:move-to-next-line",
+  ["shift+."] = "core:find-command",
+  ["space shift+/"] = "modal:help",
 }
 
 config.plugins.modal.keymaps.Edit = {
-  ["<ESC>"] = modal.go_to_mode("Move"),
-  ["C-P"] = "core:find-command",
-  ["C-?"] = "modal:help",
+  ["escape"] = modal.go_to_mode("Move"),
+  ["ctrl+shift+p"] = "core:find-command",
+  ["ctrl+shift+/"] = "modal:help",
 }
 
 config.plugins.modal.keymaps.Jump = {
-  ["<ESC>"] = modal.go_to_mode("Move"),
+  ["escape"] = modal.go_to_mode("Move"),
   ["e"] = modal.go_to_mode("Edit"),
-  ["<right>"] = { "doc:select-none", "doc:select-to-next-word-end" },
-  ["<left>"] = { "doc:select-none", "doc:select-to-previous-word-start" },
-  ["<up>"] = { "doc:select-none", "doc:move-to-previous-line", "doc:move-to-end-of-line", "doc:select-to-previous-word-start" },
-  ["<down>"] = { "doc:select-none", "doc:move-to-next-line", "doc:move-to-start-of-line", "doc:select-to-next-word-end" },
-  [":"] = "core:find-command",
-  ["<space>?"] = "modal:help",
+  ["right"] = { "doc:select-none", "doc:select-to-next-word-end" },
+  ["left"] = { "doc:select-none", "doc:select-to-previous-word-start" },
+  ["up"] = { "doc:select-none", "doc:move-to-previous-line", "doc:move-to-end-of-line", "doc:select-to-previous-word-start" },
+  ["down"] = { "doc:select-none", "doc:move-to-next-line", "doc:move-to-start-of-line", "doc:select-to-next-word-end" },
+  ["shift+."] = "core:find-command",
+  ["space shift+/"] = "modal:help",
 }
 ```
 
