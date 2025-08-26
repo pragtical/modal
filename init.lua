@@ -5,12 +5,14 @@ local keymap = require "core.keymap"
 local style = require "core.style"
 local StatusView = require "core.statusview"
 local CommandView = require "core.commandview"
+local NagView = require "core.nagview"
 local DocView = require "core.docview"
 local RootView = require "core.rootview"
 local common = require "core.common"
 local config = require "core.config"
 
 local KeyMapView = require "plugins.modal.keymapview"
+local modalkm = require "plugins.modal.keymap"
 
 local modal = {}
 
@@ -74,27 +76,6 @@ end
 --   return core.active_view.doc
 -- end
 
-modal.key_mapping = {
-  ['escape'] = "<ESC>",
-  ['left ctrl'] = 'C-',  -- mod
-  ['right ctrl'] = 'C-', -- mod
-  ['left alt'] = 'A-',   -- mod
-  ['right alt'] = 'A-',  -- mod
-  ['left shift'] = '',   -- mod
-  ['right shift'] = '',  -- mod
-  ['capslock'] = '',     -- mod
-  ['left gui'] = 'M-',   -- mod
-  ['right gui'] = 'M-',  -- mod
-  ['space'] = '<space>',
-  ['backspace'] = '<bkspc>',
-  ['delete'] = '<del>',
-  ['<'] = '\\<',
-}
-
-modal.reverse_key_mapping = {
-  ['\\<'] = '<',
-  ["<space>"] = ' ',
-}
 
 modal.key_modifiers = {
   ["left shift"] = false,
@@ -163,13 +144,7 @@ function modal.convert_stroke(key)
     modal.key_modifiers[key] = not modal.key_modifiers[key]
     return ''
   end
-  if modal.key_mapping[key] ~= nil then
-    return modal.key_mapping[key]
-  end
 
-  if #key > 1 then
-    return "<" .. key .. ">"
-  end
   key = apply_mods(key)
   return key
 end
@@ -347,7 +322,11 @@ function modal.eval_current_strokes()
       if #seq == 0 and is_number(view.modal.keystrokes[i]) then
         N_repeat = N_repeat .. view.modal.keystrokes[i]
       else
-        seq = seq .. view.modal.keystrokes[i]
+        if #seq > 0 then
+          seq = seq .. ' ' .. view.modal.keystrokes[i]
+        else
+          seq = view.modal.keystrokes[i]
+        end
       end
       view.modal.keyhelper = view.modal.keyhelper .. view.modal.keystrokes[i]
     end
@@ -380,18 +359,16 @@ end
 modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
-  if k ~= 'capslock' and modal.key_modifiers[k] ~= nil then
-    modal.key_modifiers[k] = false
-  end
+  modalkm.released_modifiers(k)
   return modal.on_key_released__orig(k)
 end
 
 modal.on_key_pressed__orig = keymap.on_key_pressed
 
 function modal.on_key_passthrough(k, ...)
-  local key = modal.convert_stroke(k)
-  if key and #key > 1 then
-    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = key
+  local stroke = modalkm.key_to_stroke(k)
+  if stroke and #stroke > 1 then
+    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
     if modal.eval_current_strokes() then
       return true
     end
@@ -403,9 +380,9 @@ function modal.on_key_command_only(k, ...)
   if string.find(k, 'click') or string.find(k, 'wheel') then
     return modal.on_key_pressed__orig(k, ...)
   end
-  local key = modal.convert_stroke(k)
-  if key and #key > 0 then
-    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = key
+  local stroke = modalkm.key_to_stroke(k)
+  if stroke and #stroke > 0 then
+    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
     modal.eval_current_strokes()
   end
   return true
@@ -456,7 +433,7 @@ local function modal_help()
   if mode ~= nil then
     local key_map = config.plugins.modal.keymaps[mode]
     if key_map ~= nil then
-      show_help(mode,key_map)
+      show_help(mode, key_map)
     end
   end
 end
@@ -534,11 +511,11 @@ function modal.set_mode(mode_id)
 end
 
 function keymap.on_key_pressed(k, ...)
+  local mod = modalkm.pressed_modifiers(k)
   local view = dv()
-  if view:is(CommandView) then
+  if view:is(CommandView) or view:is(NagView) then
     return modal.on_key_pressed__orig(k, ...)
   end
-
   if view.modal and view.modal.callback then
     return view.modal.callback(k, ...)
   else
