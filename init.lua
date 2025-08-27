@@ -16,6 +16,7 @@ local modalkm = require "plugins.modal.keymap"
 
 local modal = {}
 
+
 core.modal = modal
 
 config.plugins.modal = common.merge({
@@ -31,6 +32,8 @@ config.plugins.modal = common.merge({
     strokes = true,
   }
 }, config.plugins.modal)
+
+modal.bindings = {}
 
 modal.caret_style = { NORMAL = 0, BAR = 1, }
 
@@ -72,47 +75,6 @@ local function dv()
   return core.active_view
 end
 
--- local function doc()
---   return core.active_view.doc
--- end
-
-
-modal.key_modifiers = {
-  ["left shift"] = false,
-  ["right shift"] = false,
-  ["capslock"] = false,
-  ["left ctrl"] = false,
-  ["right ctrl"] = false,
-  ["left alt"] = false,
-  ["right alt"] = false,
-  ["left gui"] = false,
-  ["right gui"] = false,
-}
-
-modal.shift_keys = {
-  [";"] = ":",
-  ["§"] = "±",
-  ["`"] = "~",
-  ["1"] = "!",
-  ["2"] = "@",
-  ["3"] = "#",
-  ["4"] = "$",
-  ["5"] = "%",
-  ["6"] = "^",
-  ["7"] = "&",
-  ["8"] = "*",
-  ["9"] = "(",
-  ["0"] = ")",
-  ["-"] = "_",
-  ["="] = "+",
-  ["["] = "{",
-  ["]"] = "}",
-  ["'"] = "\"",
-  ["\\"] = "|",
-  [","] = "<",
-  ["."] = ">",
-  ["/"] = "?",
-}
 
 function modal.get_mode()
   if dv() ~= nil and dv().modal ~= nil then
@@ -431,7 +393,7 @@ end
 local function modal_help()
   local mode = modal:get_mode()
   if mode ~= nil then
-    local key_map = config.plugins.modal.keymaps[mode]
+    local key_map = modal.bindings[mode]
     if key_map ~= nil then
       show_help(mode, key_map)
     end
@@ -441,7 +403,7 @@ end
 modal.help = modal_help
 
 local function get_keymap(mode_id)
-  local map = config.plugins.modal.keymaps[mode_id]
+  local map = modal.bindings[mode_id]
   if map ~= nil then
     return map
   end
@@ -666,6 +628,18 @@ function RootView:draw(...)
         renderer.draw_text(font, line, x, y, fg)
         y = y + font:get_height()
       end
+    end
+  end
+end
+
+function modal.load_bindings(kb_model)
+  modal.bindings = {}
+  for mode, m_keymap in pairs(config.plugins.modal.keymaps) do
+    modal.bindings[mode] = {}
+    for ks, fn in pairs(m_keymap) do
+      local conv = kb_model.convert(ks)
+      print(conv)
+      modal.bindings[mode][conv] = fn
     end
   end
 end
