@@ -50,6 +50,10 @@ local function reinitialise_mod()
   end
 end
 
+local function is_capital(ch)
+  return #ch == 1 and ch >= 'A' and ch <= 'Z'
+end
+
 local function process(str)
   if #str == 0 then
     return ''
@@ -67,10 +71,10 @@ local function process(str)
   if shift_keys[str] ~= nil then
     return res .. 'shift+' .. shift_keys[str]
   end
-  if #str>1 and str:sub(1,1) == '<' and str:sub(#str) == '>' then
-    return res .. str:sub(2, #str-1)
+  if #str > 1 and str:sub(1, 1) == '<' and str:sub(#str) == '>' then
+    return res .. str:sub(2, #str - 1)
   end
-  if str:upper() == str then
+  if is_capital(str) then
     return res .. 'shift+' .. str:lower()
   end
   return res .. str
