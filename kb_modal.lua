@@ -131,18 +131,4 @@ function kb_modal.convert(str)
   return res
 end
 
-local test = {
-  "<space>Q",
-  "<space>C-x",
-  "C-?",
-  "A-\\<",
-  "<ESC>",
-  ":",
-  "C-<left>"
-}
-
-for _, e in ipairs(test) do
-  print(e, kb_modal.convert(e))
-end
-
 return kb_modal
