@@ -34,6 +34,7 @@ config.plugins.modal = common.merge({
 }, config.plugins.modal)
 
 modal.bindings = {}
+modal.helper_bindings = {}
 
 modal.caret_style = { NORMAL = 0, BAR = 1, }
 
@@ -290,7 +291,11 @@ function modal.eval_current_strokes()
           seq = view.modal.keystrokes[i]
         end
       end
-      view.modal.keyhelper = view.modal.keyhelper .. view.modal.keystrokes[i]
+      if #view.modal.keyhelper > 0 then
+        view.modal.keyhelper = view.modal.keyhelper .." " .. view.modal.keystrokes[i]
+      else
+        view.modal.keyhelper = view.modal.keystrokes[i]
+      end
     end
     local cmd = modal.get_command(seq)
     if cmd ~= nil then
@@ -415,7 +420,7 @@ local function get_keymap(mode_id)
 end
 
 local function get_helpers(mode_id)
-  local helpers = config.plugins.modal.helpers[mode_id]
+  local helpers = modal.helper_bindings[mode_id]
   if helpers ~= nil then
     return helpers
   end
@@ -643,6 +648,14 @@ function modal.load_bindings(kb_model)
     for ks, fn in pairs(m_keymap) do
       local conv = kb_model.convert(ks)
       modal.bindings[mode][conv] = fn
+    end
+  end
+  modal.helper_bindings = {}
+  for mode, m_helpers in pairs(config.plugins.modal.helpers) do 
+    modal.helper_bindings[mode] = {}
+    for ks, tuple in pairs(m_helpers) do
+      local conv = kb_model.convert(ks)
+      modal.helper_bindings[mode][conv] = tuple
     end
   end
 end
