@@ -1,19 +1,6 @@
 local keymap = {}
 
 
-keymap.key_modifiers = {
-  ["left shift"] = false,
-  ["right shift"] = false,
-  ["capslock"] = false,
-  ["left ctrl"] = false,
-  ["right ctrl"] = false,
-  ["left alt"] = false,
-  ["right alt"] = false,
-  ["left gui"] = false,
-  ["right gui"] = false,
-}
-
-
 local macos = PLATFORM == "Mac OS X"
 
 local modkeys_os = require("core.modkeys-" .. (macos and "macos" or "generic"))
