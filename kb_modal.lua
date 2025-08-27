@@ -1,4 +1,4 @@
-local deprecated = {}
+local kb_modal = {}
 
 local shift_keys = {
   [":"] = ";",
@@ -87,7 +87,7 @@ local function append(res, key)
   end
 end
 
-function deprecated.convert(str)
+function kb_modal.convert(str)
   local subs = ''
   local res = ''
   local prev = str:sub(1, 1)
@@ -142,7 +142,7 @@ local test = {
 }
 
 for _, e in ipairs(test) do
-  print(e, deprecated.convert(e))
+  print(e, kb_modal.convert(e))
 end
 
-return deprecated
+return kb_modal
