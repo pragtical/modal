@@ -327,25 +327,29 @@ end
 
 modal.on_key_pressed__orig = keymap.on_key_pressed
 
-function modal.on_key_passthrough(k, ...)
-  local stroke = modalkm.key_to_stroke(k)
-  if stroke and #stroke > 1 then
-    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
-    if modal.eval_current_strokes() then
-      return true
+function modal.on_key_passthrough(k, mod, ...)
+  if not mod then
+    local stroke = modalkm.key_to_stroke(k)
+    if stroke and #stroke > 1 then
+      dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
+      if modal.eval_current_strokes() then
+        return true
+      end
     end
   end
   return modal.on_key_pressed__orig(k, ...)
 end
 
-function modal.on_key_command_only(k, ...)
+function modal.on_key_command_only(k, mod, ...)
   if string.find(k, 'click') or string.find(k, 'wheel') then
     return modal.on_key_pressed__orig(k, ...)
   end
-  local stroke = modalkm.key_to_stroke(k)
-  if stroke and #stroke > 0 then
-    dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
-    modal.eval_current_strokes()
+  if not mod then
+    local stroke = modalkm.key_to_stroke(k)
+    if stroke and #stroke > 0 then
+      dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
+      modal.eval_current_strokes()
+    end
   end
   return true
 end
@@ -479,7 +483,7 @@ function keymap.on_key_pressed(k, ...)
     return modal.on_key_pressed__orig(k, ...)
   end
   if view.modal and view.modal.callback then
-    return view.modal.callback(k, ...)
+    return view.modal.callback(k, mod, ...)
   else
     return modal.on_key_pressed__orig(k, ...)
   end
@@ -638,7 +642,6 @@ function modal.load_bindings(kb_model)
     modal.bindings[mode] = {}
     for ks, fn in pairs(m_keymap) do
       local conv = kb_model.convert(ks)
-      print(conv)
       modal.bindings[mode][conv] = fn
     end
   end
