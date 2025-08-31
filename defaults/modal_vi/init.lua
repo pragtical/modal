@@ -36,6 +36,7 @@ config.plugins.modal.base_mode = mode.NOR
 config.plugins.modal.modes = { mode.NOR, mode.INS, mode.VIS }
 config.plugins.modal.keymaps = {
   NOR = {
+    ["escape"] = modal.clean,
     -- movement
     ["left"] = { "doc:move-to-previous-char", "dialog:previous-entry" },
     ["right"] = { "doc:move-to-next-char", "dialog:next-entry" },
@@ -66,86 +67,74 @@ config.plugins.modal.keymaps = {
     ["S+6"] = { "doc:move-to-start-of-line", mu.move_to_next_word_start },
     ["g S+-"] = { "doc:move-to-end-of-line", "doc:move-to-previous-word-end" },
     ["g g"] = "doc:move-to-start-of-doc",
-    ["S+g"] = {"doc:move-to-end-of-doc", "doc:move-to-start-of-line"},
+    ["S+g"] = { "doc:move-to-end-of-doc", "doc:move-to-start-of-line" },
+    ["f $"] = mu.move_next_char,
+    ["S+f $"] = mu.move_prev_char,
+    ["t $"] = mu.move_till_next_char,
+    ["S+t $"] = mu.move_till_prev_char,
+    ["S+]"] = "doc:move-to-next-block-end",
+    ["S+["] = "doc:move-to-previous-block-start",
 
     -- base command
     ["S+;"] = "core:find-command",
     ["return"] = { "command:submit", "dialog:select" },
     ["."] = "modal:redo",
+
     -- mode change
     ["i"] = { mu.go_to_selection_start, modal.go_to_mode(mode.INS) },
     ["S+i"] = { "doc:move-to-start-of-line", modal.go_to_mode(mode.INS) },
-    ["v"] = modal.go_to_mode(mode.VIS),
-    ["S+o"] = { "doc:newline-above", mu.go_to_selection_start, modal.go_to_mode(mode.INS) },
-    ["o"] = { "doc:newline-below", mu.go_to_selection_start, modal.go_to_mode(mode.INS) },
     ["a"] = { mu.go_to_selection_end, modal.go_to_mode(mode.INS) },
     ["S+a"] = { "doc:move-to-end-of-line", mu.go_to_selection_start, modal.go_to_mode(mode.INS) },
+    ["o"] = { "doc:newline-below", mu.go_to_selection_start, modal.go_to_mode(mode.INS) },
+    ["S+o"] = { "doc:newline-above", mu.go_to_selection_start, modal.go_to_mode(mode.INS) },
+    ["e a"] = { "doc:move-to-next-word-end", modal.go_to_mode(mode.INS) },
+
+    ["v"] = modal.go_to_mode(mode.VIS),
+
     -- actions
+    ["r $"] = mu.replace,
+    ["S+r"] = "doc:paste",
+    ["S+j"] = "doc:join-lines",
     ["u"] = "doc:undo",
     ["S+u"] = "doc:redo",
     ["p"] = mu.paste_after,
     ["S+p"] = mu.paste_before,
-    ["y"] = mu.copy,
-    ["d"] = { mu.copy, mu.delete },
-    -- ["J"] = "doc:join-lines",
-    -- ["\\<"] = mu.unindent,
-    -- [">"] = mu.indent,
-    ["r $"] = mu.replace,
-    ["S+r"] = "doc:paste",
+    ["y y"] = { "doc:select-lines", mu.copy },
+    ["d d"] = { "doc:select-lines", mu.copy, "doc:delete-lines" },
+    ["x"] = { mu.copy, "doc:delete" },
     -- search
     ["space /"] = "project-search:find",
     ["/"] = "find-replace:find",
     ["n"] = "find-replace:repeat-find",
     ["S+n"] = "find-replace:previous-find",
 
-    -- movement + selection
-    -- ["x"] = mu.select_line,
-    -- ["X"] = mu.select_LINE,
-    ["f $"] = { mu.move_next_char },
-    ["S+f $"] = { mu.move_prev_char },
-    ["t $"] = { mu.move_till_next_char },
-    ["S+t $"] = { mu.move_till_prev_char },
-    ["g n"] = { mu.go_to_line },
+    -- file project ops
+    ["space f"] = "core:open-file",
+    ["space p"] = "core:change-project-folder",
+    ["space S+p"] = "core:open-project-folder",
+    ["C+c"] = "doc:toggle-line-comments",
 
-    -- Go To
-    -- ["gh"] = { mu.unselect, "doc:move-to-start-of-line" },
-    -- ["gl"] = { mu.unselect, "doc:move-to-end-of-line" },
-    -- ["gg"] = { mu.unselect, "doc:move-to-start-of-doc" },
-    -- ["g:"] = { mu.unselect, "doc:go-to-line" },
-
-    -- match
-    -- ["mm"] = { mu.unselect, "bracket-match:move-to-matching" },
-    -- ["ms"] = { mu.unselect, "bracket-match:select-to-matching" },
-
-    -- ["<space>f"] = "core:find-project-file",
-    -- ["<space>F"] = "core:open-file",
-    -- ["<space>p"] = "core:change-project-folder",
-    -- ["<space>P"] = "core:open-project-folder",
-    -- ["<space>b"] = "buffer:picker", -- need plugin tab-switcher
-    -- ["<space>c"] = "doc:toggle-line-comments",
-    -- ["C-c"] = "doc:toggle-line-comments",
-
-    -- WINDOWS operations
-    -- ["<f11>"] = "core:toogle-full-screen",
-    -- ["<space>wv"] = { "root:split-right", "root:switch-to-right" },
-    -- ["<space>ws"] = { "root:split-down", "root:switch-to-down" },
-    -- ["<space>wq"] = "root:close-node",
-    -- ["<space>wQ"] = "core:quit",
-    -- ["<space>w<left>"] = "root:switch-to-left",
-    -- ["<space>w<right>"] = "root:switch-to-right",
-    -- ["<space>w<up>"] = "root:switch-to-up",
-    -- ["<space>w<down>"] = "root:switch-to-down",
-    -- ["<space>w+"] = "root:grow",
-    -- ["<space>w-"] = "root:shrink",
+    -- WINDOW S operations
+    ["f11"] = "core:toogle-full-screen",
+    ["space w v"] = { "root:split-right", "root:switch-to-right" },
+    ["space w s"] = { "root:split-down", "root:switch-to-down" },
+    ["space w q"] = "root:close-node",
+    ["space w S+q"] = "core:quit",
+    ["space w left"] = "root:switch-to-left",
+    ["space w right"] = "root:switch-to-right",
+    ["space w up "] = "root:switch-to-up",
+    ["space w down"] = "root:switch-to-down",
+    ["space w S+="] = "root:grow",
+    ["space w -"] = "root:shrink",
 
     -- LITE
-    -- ["<space>\\"] = "treeview:toggle",
-    -- ["<space>ll"] = "core:open-log",
-    -- ["<space>lL"] = "log:open-as-doc",
-    -- ["<space>lu"] = "core:open-user-module",
-    -- ["<space>lr"] = "core:reload-module",
-    -- ["<space>lR"] = "core:restart",
-    -- ["<space>ls"] = "ui:settings",
+    ["space \\"] = "treeview:toggle",
+    ["space l l"] = "core:open-log",
+    ["space l s+L"] = "log:open-as-doc",
+    ["space l u"] = "core:open-user-module",
+    ["space l r"] = "core:reload-module",
+    ["space l S+r"] = "core:restart",
+    ["space l s"] = "ui:settings",
 
     -- Modal
     ["space S+/"] = "modal:help",

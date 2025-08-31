@@ -63,4 +63,16 @@ function keymap.pressed_modifiers(k)
   return false
 end
 
+keymap.non_text_keys = {
+  ["escape"] = true,
+  ["left"] = true,
+  ["right"] = true,
+  ["up"] = true,
+  ["down"] = true,
+  ["pageup"] = true,
+  ["pagedown"] = true,
+  ["home"] = true,
+  ["return"] = true,
+}
+
 return keymap

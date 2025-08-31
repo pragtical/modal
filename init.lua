@@ -339,6 +339,14 @@ function modal.on_key_passthrough(k, mod, ...)
   return modal.on_key_pressed__orig(k, ...)
 end
 
+function modal.clean()
+  local view = dv()
+  if view and view.modal then
+    view.modal.last_input = nil
+    view.modal.keystrokes = {}
+  end
+end
+
 function modal.on_key_command_only(k, mod, ...)
   if string.find(k, 'click') or string.find(k, 'wheel') then
     return modal.on_key_pressed__orig(k, ...)
@@ -348,9 +356,11 @@ function modal.on_key_command_only(k, mod, ...)
     local stroke = modalkm.key_to_stroke(k)
     if stroke and #stroke > 0 then
       dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
-      -- if #k > 1 and k == stroke then
-      --   modal.eval_current_strokes()
-      -- end
+      if modalkm.non_text_keys[k] then
+        dv().modal.last_input = nil
+        modal.eval_current_strokes()
+        return true
+      end
       return false
     end
   end
@@ -484,6 +494,7 @@ function keymap.on_key_pressed(k, ...)
   local mod = modalkm.pressed_modifiers(k)
   local view = dv()
   if view:is(CommandView) or view:is(NagView) then
+    modal.ignore_text = false
     return modal.on_key_pressed__orig(k, ...)
   end
   if view.modal and view.modal.callback then
