@@ -102,6 +102,9 @@ config.plugins.modal.keymaps = {
     ["y y"] = { "doc:select-lines", mu.copy },
     ["d d"] = { "doc:select-lines", mu.copy, "doc:delete-lines" },
     ["x"] = { mu.copy, "doc:delete" },
+
+    ["S+."] = "doc:indent",
+    ["S+,"] = "doc:unindent",
     -- search
     ["space /"] = "project-search:find",
     ["/"] = "find-replace:find",
@@ -152,7 +155,56 @@ config.plugins.modal.keymaps = {
     ["g r"] = "lsp:find-references",
   },
   VIS = {
-    ["escape"] = modal.go_to_mode(mode.NOR)
+    ["escape"] = modal.go_to_mode(mode.NOR),
+    -- movement
+    ["left"] = { "doc:select-to-previous-char", "dialog:previous-entry" },
+    ["right"] = { "doc:select-to-next-char", "dialog:next-entry" },
+    ["up"] = { "command:select-previous", "doc:select-to-previous-line" },
+    ["down"] = { "command:select-next", "doc:select-to-next-line" },
+    ["h"] = "doc:select-to-previous-char",
+    ["l"] = "doc:select-to-next-char",
+    ["k"] = "doc:select-to-previous-line",
+    ["j"] = "doc:select-to-next-line",
+    ["pageup"] = "doc:select-to-previous-page",
+    ["pagedown"] = "doc:select-to-next-page",
+    ["g j"] = "doc:select-to-next-line",
+    ["g k"] = "doc:select-to-previous-line",
+    ["w"] = mu.select_to_next_word_start,
+    ["S+w"] = mu.select_to_next_WORD_start,
+    ["e"] = "doc:select-to-next-word-end",
+    ["S+e"] = "doc:select-to-next-word-end",
+    ["b"] = "doc:select-to-previous-word-start",
+    ["S+b"] = "doc:select-to-previous-word-start",
+    -- ["g e"] = "doc:move-to-previous-word-end", -- to implement
+    -- ["g S+e"] = "doc:move-to-previous-WORD-end", -- to implement
+    ["0"] = "doc:select-to-start-of-line",
+    ["S+4"] = "doc:select-to-end-of-line",
+    ["S+5"] = "bracket-match:select-to-matching",
+    ["S+6"] = { "doc:select-to-start-of-line", mu.select_to_next_word_start },
+    ["g S+-"] = { "doc:select-to-end-of-line", "doc:select-to-previous-word-end" },
+    ["g g"] = "doc:select-to-start-of-doc",
+    ["S+g"] = { "doc:select-to-end-of-doc", "doc:select-to-start-of-line" },
+    ["f $"] = mu.select_next_char,
+    ["S+f $"] = mu.select_prev_char,
+    ["t $"] = mu.select_till_next_char,
+    ["S+t $"] = mu.select_till_prev_char,
+    ["S+]"] = "doc:select-to-next-block-end",
+    ["S+["] = "doc:select-to-previous-block-start",
+
+    -- base command
+    ["return"] = { "command:submit", "dialog:select" },
+
+    -- actions
+    ["r $"] = mu.replace,
+    ["S+r"] = "doc:paste",
+    ["S+j"] = "doc:join-lines",
+    ["u"] = "doc:undo",
+    ["S+u"] = "doc:redo",
+    ["p"] = mu.paste_after,
+    ["S+p"] = mu.paste_before,
+    ["y"] = { mu.copy },
+    ["d"] = { mu.copy, "doc:delete-lines" },
+    ["x"] = { mu.copy, "doc:delete" },
   },
   INS = {
     ["escape"] = modal.go_to_mode(mode.NOR)
