@@ -13,6 +13,7 @@ local config = require "core.config"
 
 local KeyMapView = require "plugins.modal.keymapview"
 local modalkm = require "plugins.modal.keymap"
+local kb_modal = require "plugins.modal.bindings_models.modal"
 
 local modal = {}
 
@@ -33,8 +34,10 @@ config.plugins.modal = common.merge({
   }
 }, config.plugins.modal)
 
+modal.kb_model = kb_modal
 modal.bindings = {}
 modal.helper_bindings = {}
+modal.ignore_text = true
 
 modal.caret_style = { NORMAL = 0, BAR = 1, }
 
@@ -64,12 +67,14 @@ style["helper"] = {
 }
 
 function modal.go_to_mode(mode)
-  local fn = function()
-    modal.set_mode(mode)
+  if mode ~= nil then
+    local fn = function()
+      modal.set_mode(mode)
+    end
+    local key = "modal:set-mode-" .. mode
+    modal.fns[fn] = key
+    return fn
   end
-  local key = "modal:set-mode-" .. mode
-  modal.fns[fn] = key
-  return fn
 end
 
 local function dv()
@@ -163,34 +168,9 @@ local function is_number(x)
 end
 
 function modal.split_command(cmd)
-  local array   = {}
-  local i       = 1
-  local sub_cmd = ''
-  local special = false
-  while i <= #cmd do
-    local c = string.sub(cmd, i, i)
-    if special then
-      sub_cmd = sub_cmd .. c
-      if c == '>' then
-        table.insert(array, sub_cmd)
-        sub_cmd = ''
-        special = false
-      end
-    elseif c == '<' then
-      if #array >= 1 and array[#array] == '\\' then
-        array[#array] = '\\<'
-      else
-        sub_cmd = c
-        special = true
-      end
-    else
-      table.insert(array, c)
-    end
-    i = i + 1
-  end
-  local x = ''
-  for _, c in ipairs(array) do
-    x = x .. c .. ' '
+  local array = {}
+  for str in string.gmatch(cmd, '([^ ]+)') do
+    table.insert(array, str)
   end
   return array
 end
@@ -200,7 +180,7 @@ local function match_command(seq, cmd, full)
   local split_cmd = modal.split_command(cmd)
   if (full and #split_seq == #split_cmd) or (not full and #split_seq <= #split_cmd) then
     for i = 1, #split_seq do
-      if split_seq[i] ~= split_cmd[i] and split_cmd[i] ~= "<.>" then
+      if split_seq[i] ~= split_cmd[i] and split_cmd[i] ~= "$" then
         return false
       end
     end
@@ -244,11 +224,10 @@ function modal.eval_cmd(cmd)
       command.perform(cmd)
     else
       local view = dv()
-      if view then
-        for i = 1, #cmd do
-          local scmd = string.sub(cmd, i, i)
-          modal.eval_cmd(view.modal.keymap[scmd])
-        end
+      if view and view.modal.keymap[cmd] ~= nil then
+        modal.eval_cmd(view.modal.keymap[cmd])
+      elseif view then
+        error("Command `" .. cmd .. "` not found")
       end
     end
   elseif type(cmd) == "function" then
@@ -292,7 +271,7 @@ function modal.eval_current_strokes()
         end
       end
       if #view.modal.keyhelper > 0 then
-        view.modal.keyhelper = view.modal.keyhelper .." " .. view.modal.keystrokes[i]
+        view.modal.keyhelper = view.modal.keyhelper .. " " .. view.modal.keystrokes[i]
       else
         view.modal.keyhelper = view.modal.keystrokes[i]
       end
@@ -323,6 +302,20 @@ function modal.eval_current_strokes()
   end
 end
 
+local root_on_text_input = RootView.on_text_input
+
+function RootView.on_text_input(dview, text)
+  if not modal.ignore_text then
+    root_on_text_input(dview, text)
+  else
+    local view = dv()
+    if view ~= nil and view.modal ~= nil then
+      view.modal.last_input = text
+      modal.eval_current_strokes()
+    end
+  end
+end
+
 modal.on_key_released__orig = keymap.on_key_released
 
 function keymap.on_key_released(k)
@@ -342,6 +335,7 @@ function modal.on_key_passthrough(k, mod, ...)
       end
     end
   end
+  modal.ignore_text = false
   return modal.on_key_pressed__orig(k, ...)
 end
 
@@ -350,10 +344,14 @@ function modal.on_key_command_only(k, mod, ...)
     return modal.on_key_pressed__orig(k, ...)
   end
   if not mod then
+    modal.ignore_text = true
     local stroke = modalkm.key_to_stroke(k)
     if stroke and #stroke > 0 then
       dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
-      modal.eval_current_strokes()
+      -- if #k > 1 and k == stroke then
+      --   modal.eval_current_strokes()
+      -- end
+      return false
     end
   end
   return true
@@ -459,6 +457,7 @@ function modal.set_mode(mode_id)
           caret = width,
           keystrokes = {},
           last_command = nil,
+          last_input = nil,
           current_command = nil,
           keyhelper = "",
           active_help = nil,
@@ -642,19 +641,22 @@ function RootView:draw(...)
 end
 
 function modal.load_bindings(kb_model)
+  if kb_model ~= nil then
+    modal.kb_model = kb_model
+  end
   modal.bindings = {}
   for mode, m_keymap in pairs(config.plugins.modal.keymaps) do
     modal.bindings[mode] = {}
     for ks, fn in pairs(m_keymap) do
-      local conv = kb_model.convert(ks)
+      local conv = modal.kb_model.convert(ks)
       modal.bindings[mode][conv] = fn
     end
   end
   modal.helper_bindings = {}
-  for mode, m_helpers in pairs(config.plugins.modal.helpers) do 
+  for mode, m_helpers in pairs(config.plugins.modal.helpers) do
     modal.helper_bindings[mode] = {}
     for ks, tuple in pairs(m_helpers) do
-      local conv = kb_model.convert(ks)
+      local conv = modal.kb_model.convert(ks)
       modal.helper_bindings[mode][conv] = tuple
     end
   end

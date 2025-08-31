@@ -30,7 +30,9 @@ local key_mapping = {
   ['<space>'] = 'space',
   ['<bkspc>'] = 'backspace',
   ['<del>'] = 'delete',
+  ['<.>'] = '$',
   ['\\<'] = 'shift+,',
+  ['$'] = '\\$',
 }
 
 local mods_key = {
