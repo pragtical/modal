@@ -1,13 +1,13 @@
 -- mod-version:3
 local modal = require "plugins.modal"
-local kb_modal = require "plugins.modal.kb_modal"
+local kb_modal = require "plugins.modal.bindings_models.modal"
 
 local core = require "core"
 local search = require "core.doc.search"
 local config = require "core.config"
 local command = require "core.command"
 
-require "plugins.modal-hx.interface"
+require "plugins.modal.defaults.modal_hx.interface"
 
 
 local modal_hx = {}
