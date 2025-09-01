@@ -4,6 +4,43 @@ A fully customizable modal editing experience for Lite Xl
 
 ![](intro.gif)
 
+
+## Principles
+
+### Modal editor
+
+A modal editor is a text editor that has different **modes** that define how the user interact with
+the editor and its content.
+
+The list of modal editor is long (maybe to long), few of them are listed below:
+ - Ex
+ - VI 
+ - VIM
+ - NeoVIM
+ - Kakoune
+ - Xi
+ - Helix 
+
+Most of this editors have a *normal* mode where the user can navigate and manipulate the text
+and at least a *insert* mode where the user can edit/enter text as in non modal editors. 
+
+### But why
+
+When developing code I spend a good fraction of time navigating the code, jumping trought definition and references, files
+and so on.
+
+While using standard short cut and the mouse could make the job, I find that using non-editing modes makes it 
+much better:
+ 1. More ergonomical: no mouse involved, almost infinite combination of strokes for each action etc
+ 2. Faster: my hands are always ready to type
+ 3. Universal: almost everywhere I can find a modal text editor (at least vi) and I can use it without being lost
+
+Please note that these are my opinion and I am not trying to convince you! 
+
+So I like modes and I like to custumize my editor at my will, that's why this plugin does not come with any
+pre-defined setup (even if there are a few examples/configurations for who want to try) and can be configured
+and expanded almost at any level.
+
 ## Configuration
 
 The configuration of the modal experience can be done via the follow parameters:
