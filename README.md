@@ -60,15 +60,123 @@ git clone https://codeberg.org/Mandarancio/lite-modal.git modal
 
 ## How to use 
 
+Once installed you have to configure it at your will, for doing so there are at least 2 possibilities:
+ 1. Use one of the provided default [*quick and easy*]
+ 2. Configure your own modal configuration [*more work*]
+
 ### Defaults
 
-#### Dummy
+The defaults are stored in the [defaults](defaults/) folder.
+Currently there are the following defaults
 
-#### Helix
+ 1. [dummy](defaults/modal_dummy/) is a simple configuration to be used as an example
+ 2. [hx](default/modal_hx/) is the most complete default and imitate the helix keybinding and functionalities
+ 3. [vi](default/modal_vi/) is an ok default that imitate a basic vim configuration 
 
-#### VI
+To use any of this you have to edit your lite-xl [init.lua](https://lite-xl.com/user-guide/configuration/) by
+simply adding the following line:
 
-## Configuration
+```lua
+require "plugins.modal.defaults.modal_DEFAULT"
+```
+
+Where (obviusly) `DEFAULT` is the default you want to use (`dummy`, `hx` or `vi`).
+
+Find more informations about each defaults in their own `README.md`.
+
+
+### Manual Configuration
+
+If you want to personalise your experience you can manully configure `modal` (or extend/modify any of the defaults).
+
+You can define your configuration directly in the lite-xl [`init.lua`](https://lite-xl.com/user-guide/configuration/) or 
+you can create an external file in your configuration folder and include it using `requre "YOUR_FILE"` inside the 
+lite-xl configuration file (as is done for the default presets).
+
+All the configuration of the plugin is stored in the *standard* `config` module so the first thing to do is to load it (if it is not already done):
+
+```lua
+local config = require "core.config"
+```
+
+**Note** that if you are using lite-xl configuration file is probably already loaded.
+
+Then all the configurations will be done inside the `config.plugins.modal` table.
+
+You will also need `modal` for the configuration:
+
+```lua
+local modal = require "plugins.modal"
+```
+ 
+#### Define modes
+
+The first thing to do is to define the modes names and which should be your default mode (the one that will be active when starting lite-xl or opening a file etc).
+
+```lua
+config.plugins.modal.modes = { "NOR", "INS" , "JMP"} -- List of modes (3 modes for the example but any number of mode is supproted)
+config.plugins.modal.base_mode = "NOR" -- DEFAULT MODE (used when starting lite-xl or opening a file)
+```
+
+Now for each mode you can/have to do a number of choices:
+ 1. which interaction mode to use (basically what to do when you type)
+ 2. *optionally* which caret style use
+ 3. define keybindings
+ 4. *optionally* define helpers
+
+The **interaction mode** (`on_key_callbacks`) specifies to modal what to do when you press a key, there are 2 defaults interaction modes:
+ 1. `modal.on_key_command_only`: keys will only be used to match your keybinding and not to directly edit your files
+ 2. `modal.on_key_passtrought`: keys will be used to match your keybinding and to edit your file (basically what lite-xl does already)
+
+You can also define your own interaction mode, but this is outside the scope of this documentation.
+
+```lua
+-- config.plugins.modal.on_key_callbacks.YOUR_MODE = modal.on_key_YOUR_CHOICE
+config.plugins.modal.on_key_callbacks.NOR = modal.on_key_command_only -- to navigate
+config.plugins.modal.on_key_callbacks.JMP = modal.on_key_command_only -- to navigate but quickly
+config.plugins.modal.on_key_callbacks.INS = modal.on_key_passthrough -- to edit your file
+```
+
+The **caret stye** is optional, if not defined the standard lite-xl caret will be used, 2 caret styles are defined:
+
+ 1. `modal.caret_style.NORMAL` the standard vertical thin line of lite-xl
+ 2. `modal.caret_style.BAR` a big block covering the full size of a letter
+
+```lua
+-- config.plugins.modal.carets.YOUR_MODE = modal.caret_style.YOUR_CHOICE
+config.plugins.modal.carets.NOR = modal.caret_style.BAR
+config.plugins.modal.carets.JMP = modal.caret_style.BAR
+-- default is NORMAL (e.g. INS will use NORMAL)
+```
+
+#### Keybinding
+
+The next big step in the configuration of the `modal` is to define the keybinding for each mode.
+
+
+
+#### Helpers
+
+#### Utils
+
+#### UI
+
+
+#### Finalisation
+
+**NOTE THIS STEP IS MANDATORY**
+
+To finalise your configuration you **have** to laod your bindings in the internal `modal` representation (this will also load your helpers, if any):
+
+```lua
+-- local kb_model = require "plugins.modal.bindings_models.YOUR_CHOICE"
+local kb_model = require "plugins.modal.bindings_models.compact"
+modal.load_bindings(kb_model) -- store the keybindings and helpers in the internal representation
+```
+
+This step is mandatory in order to allow multiple keybinding syntaxes.
+
+## Configuration table
 
 The configuration of the modal experience can be done via the follow parameters:
 
@@ -82,6 +190,8 @@ The configuration of the modal experience can be done via the follow parameters:
 | `config.plugins.modal.helpers`          |            `{}`             | available command helpers per mode                        |
 | `config.plugins.modal.show_helpers`     |           `true`            | enable or disable command helper                          |
 | `config.plugins.modal.status_bar`       | `{mode=true, strokes=true}` | configure the status bar widget                           |
+
+Mandatory step is `modal.load_bindings(BINDING_MODEL)`
 
 Additionally the helper styling can be changed:
 
@@ -220,60 +330,10 @@ modal.set_status_bar() -- apply the changes
 
 ## Commands
 
-Two commands are added to lite:
+Two commands are added to lite-xl:
 
 - `modal:redo` that redo the last executed command (N times if a number modifier is specified, a la vi)
 - `modal:help` to show the current keymap active
 
-## Presets
 
-### Simple Preset
 
-Below a simple example of a demo configuration that you can simply paste in your `init.lua`:
-
-```lua
-local config = require "core.config"
-local modal = require "plugins.modal"
-
-config.plugins.modal.status_bar.strokes = false
-modal.set_status_bar()
-
-config.plugins.modal.modes = { "Move", "Edit", "Jump" }
-config.plugins.modal.base_mode = "Move"
-
-config.plugins.modal.on_key_callbacks.Move = modal.on_key_command_only
-config.plugins.modal.on_key_callbacks.Edit = modal.on_key_passthrough
-config.plugins.modal.on_key_callbacks.Jump = modal.on_key_command_only
-
-config.plugins.modal.keymaps.Move = {
-  ["e"] = modal.go_to_mode("Edit"),
-  ["j"] = modal.go_to_mode("Jump"),
-  ["right"] = "doc:move-to-next-char",
-  ["left"] = "doc:move-to-previous-char",
-  ["up"] = "doc:move-to-previous-line",
-  ["down"] = "doc:move-to-next-line",
-  ["shift+."] = "core:find-command",
-  ["space shift+/"] = "modal:help",
-}
-
-config.plugins.modal.keymaps.Edit = {
-  ["escape"] = modal.go_to_mode("Move"),
-  ["ctrl+shift+p"] = "core:find-command",
-  ["ctrl+shift+/"] = "modal:help",
-}
-
-config.plugins.modal.keymaps.Jump = {
-  ["escape"] = modal.go_to_mode("Move"),
-  ["e"] = modal.go_to_mode("Edit"),
-  ["right"] = { "doc:select-none", "doc:select-to-next-word-end" },
-  ["left"] = { "doc:select-none", "doc:select-to-previous-word-start" },
-  ["up"] = { "doc:select-none", "doc:move-to-previous-line", "doc:move-to-end-of-line", "doc:select-to-previous-word-start" },
-  ["down"] = { "doc:select-none", "doc:move-to-next-line", "doc:move-to-start-of-line", "doc:select-to-next-word-end" },
-  ["shift+."] = "core:find-command",
-  ["space shift+/"] = "modal:help",
-}
-```
-
-### Helix Preset
-
-For an almost full replica of the [Helix](helix-editor.com) modal experience please use the [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) preset.
