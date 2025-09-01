@@ -4,7 +4,6 @@ local kb_modal = require "plugins.modal.bindings_models.modal"
 local mu = require "plugins.modal.utils"
 
 local core = require "core"
-local search = require "core.doc.search"
 local config = require "core.config"
 local command = require "core.command"
 
