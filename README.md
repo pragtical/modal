@@ -51,17 +51,17 @@ Numbers can not be used in keystrokes as they are used as modifiers to repeat a 
 
 For example `10 ctrl+/` will execute 10 times the action linked to the `ctrl+/` sequence.
 
-#### Equivalence with v0.4.0 syntax
+#### Equivalences Syntaxes
 
 Below some equivalent representation with previous version
 
-| Modal 0.4.0  | Modal 0.5.0       |
-| :----------- | :---------------- |
-| `<space>f`   | `space f`         |
-| `<space>F` ` | `space shift+f`   |
-| `C-f`        | `ctrl+f`          |
-| `F<.>`       | `shfit+f <.>`     |
-| `<space>wQ`  | `space w shfit+q` |
+| Modal        | Lite              | Compact       |
+| :----------- | :---------------- | :------------ |
+| `<space>f`   | `space f`         | `space f`     |
+| `<space>F`   | `space shift+f`   | `space S+f`   |
+| `C-f`        | `ctrl+f`          | `C+f`         |
+| `F<.>`       | `shfit+f $`       | `S+f $`       |
+| `<space>wQ`  | `space w shfit+q` | `space w S+q` | 
 
 ### Configuration details
 
