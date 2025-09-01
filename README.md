@@ -41,6 +41,33 @@ So I like modes and I like to custumize my editor at my will, that's why this pl
 pre-defined setup (even if there are a few examples/configurations for who want to try) and can be configured
 and expanded almost at any level.
 
+
+## How to install
+
+You can use [lpm](https://github.com/lite-xl/lite-xl-plugin-manager) to install the latest version included in the
+[lite-xl-plugins](https://github.com/lite-xl/lite-xl-plugins).
+
+Otherwise simply clone the repo in your `lite-xl/plugins` folder as `modal`:
+
+On linux:
+
+```
+cd .config/lite-xl/plugins/
+git clone https://codeberg.org/Mandarancio/lite-modal.git modal
+```
+
+**However once installed you will need to configure it or at least select one of the defaults provided**
+
+## How to use 
+
+### Defaults
+
+#### Dummy
+
+#### Helix
+
+#### VI
+
 ## Configuration
 
 The configuration of the modal experience can be done via the follow parameters:
