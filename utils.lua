@@ -1,9 +1,7 @@
 local core = require "core"
 local search = require "core.doc.search"
-local config = require "core.config"
 local translate = require "core.doc.translate"
 
-local modal = require "plugins.modal"
 
 local modal_utils = {}
 
@@ -14,6 +12,10 @@ end
 local function get_doc()
   return get_dv().doc
 end
+
+
+modal_utils.get_doc = get_doc
+modal_utils.get_dv = get_dv
 
 function modal_utils.sort_positions(line1, col1, line2, col2)
   if line1 > line2 or line1 == line2 and col1 > col2 then
@@ -75,8 +77,10 @@ end
 function modal_utils.select_LINE()
   for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
     local lobj = get_doc().highlighter:get_line(line2)
-    if line1 == line2 and (col1 - col2 ~= #lobj.text - 1) then
-      get_doc():set_selections(idx, line1 - 1, math.huge, line1, math.huge)
+    if line1 == line2 and (math.abs(col2 - col1) ~= (#lobj.text - 1)) then
+      get_doc():set_selections(idx, line1, 0, line1, math.huge)
+    else
+      get_doc():set_selections(idx, math.min(line1, line2) - 1, 0, math.max(line1, line2), math.huge)
     end
   end
 end
@@ -84,10 +88,10 @@ end
 function modal_utils.select_line()
   for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
     local lobj = get_doc().highlighter:get_line(line2)
-    if line1 == line2 and (col1 - col2 ~= #lobj.text - 1) then
-      get_doc():set_selections(idx, line1, math.huge, line1 - 1, math.huge)
+    if line1 == line2 and (math.abs(col1 - col2) ~= (#lobj.text - 1)) then
+      get_doc():set_selections(idx, line1, math.huge, line1, 0)
     else
-      get_doc():set_selections(idx, math.max(line1, line2) + 1, math.huge, math.min(line1, line2), math.huge)
+      get_doc():set_selections(idx, math.max(line1, line2) + 1, math.huge, math.min(line1, line2), 0)
     end
   end
 end
@@ -109,10 +113,10 @@ end
 
 function modal_utils.select_in_blob(document, line1, col1, line2, col2, text, opt)
   local results = {}
-  local ok, l1, c1, l2, c2 = pcall(modal_utils.search.find, document, line1, col1, text, opt)
+  local ok, l1, c1, l2, c2 = pcall(search.find, document, line1, col1, text, opt)
   while ok and l1 and (l2 < line2 or (l2 == line2 and c2 <= col2)) do
     table.insert(results, { l1, c1, l2, c2 })
-    ok, l1, c1, l2, c2 = pcall(modal_utils.search.find, document, l2, c2, text, opt)
+    ok, l1, c1, l2, c2 = pcall(search.find, document, l2, c2, text, opt)
   end
   return results
 end
@@ -120,11 +124,11 @@ end
 function modal_utils.split_in_blob(document, line1, col1, line2, col2, text, opt)
   local l0, c0 = line1, col1
   local results = {}
-  local ok, l1, c1, l2, c2 = pcall(modal_utils.search.find, document, line1, col1, text, opt)
+  local ok, l1, c1, l2, c2 = pcall(search.find, document, line1, col1, text, opt)
   while ok and l1 and (l2 < line2 or (l2 == line2 and c2 <= col2)) do
     table.insert(results, { l0, c0, l1, c1 })
     l0, c0 = l2, c2
-    ok, l1, c1, l2, c2 = pcall(modal_utils.search.find, document, l2, c2, text, opt)
+    ok, l1, c1, l2, c2 = pcall(search.find, document, l2, c2, text, opt)
   end
   if l0 < line2 or (l0 == line2 and c0 < col2) then
     table.insert(results, { l0, c0, line2, col2 })
@@ -466,13 +470,7 @@ function modal_utils.extend_till_prev_char()
   end
 end
 
-local set_mode__orig = modal.set_mode
-function modal.set_mode(mode_id)
-  if mode_id then
-    set_mode__orig(mode_id)
-    modal.notify(mode_id, false)
-  end
-end
+
 
 local function is_non_word(char)
   if char == nil then
@@ -502,6 +500,18 @@ function modal_utils.next_word_start(doc, line, col)
   return line, col
 end
 
+function modal_utils.next_non_ws(doc, line, col)
+  local end_line, end_col = translate.end_of_doc(doc, line, col)
+  while line < end_line or col < end_col do
+    local char = doc:get_char(line, col)
+    if char ~= ' ' and char ~='\t' and char ~='\r' and char ~='\n' then
+      break
+    end
+    line, col = doc:position_offset(line, col, 1)
+  end
+  return line, col
+end
+
 function modal_utils.next_WORD_start(doc, line, col)
   local prev
   local end_line, end_col = translate.end_of_doc(doc, line, col)
@@ -516,14 +526,20 @@ function modal_utils.next_WORD_start(doc, line, col)
   return line, col
 end
 
-function modal_utils.move_to_next_word_start()
+function modal_utils.select_to_next_word_start()
   local dv = get_dv()
-  dv.doc:move_to(modal_utils.next_word_start, dv)
+  dv.doc:select_to(modal_utils.next_word_start, dv)
 end
 
-function modal_utils.move_to_next_WORD_start()
+function modal_utils.select_to_next_non_ws()
   local dv = get_dv()
-  dv.doc:move_to(modal_utils.next_WORD_start, dv)
+  dv.doc:select_to(modal_utils.next_non_ws, dv)
+end
+
+
+function modal_utils.select_to_next_WORD_start()
+  local dv = get_dv()
+  dv.doc:select_to(modal_utils.next_WORD_start, dv)
 end
 
 return modal_utils

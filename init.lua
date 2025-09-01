@@ -90,32 +90,6 @@ function modal.get_mode()
   end
 end
 
-local function apply_mods(key)
-  local shift = modal.key_modifiers['left shift'] or modal.key_modifiers['right shift']
-  if shift and modal.shift_keys[key] then
-    return modal.shift_keys[key]
-  end
-  local capslock = modal.key_modifiers['capslock']
-  if not (shift == capslock) and #key == 1 then
-    key = string.upper(key)
-  end
-  for label, state in pairs(modal.key_modifiers) do
-    if state and modal.key_mapping[label] then
-      key = modal.key_mapping[label] .. key
-    end
-  end
-  return key
-end
-
-function modal.convert_stroke(key)
-  if modal.key_modifiers[key] ~= nil then
-    modal.key_modifiers[key] = not modal.key_modifiers[key]
-    return ''
-  end
-
-  key = apply_mods(key)
-  return key
-end
 
 local function statusbar_mode()
   local mode_str = modal.get_mode()
@@ -356,7 +330,7 @@ function modal.on_key_command_only(k, mod, ...)
     local stroke = modalkm.key_to_stroke(k)
     if stroke and #stroke > 0 then
       dv().modal.keystrokes[#dv().modal.keystrokes + 1] = stroke
-      if modalkm.non_text_keys[k] then
+      if modalkm.non_text_keys[k] or modalkm.active_modifiers() then
         dv().modal.last_input = nil
         modal.eval_current_strokes()
         return true

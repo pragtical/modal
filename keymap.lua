@@ -10,6 +10,16 @@ local modkey_map = modkeys_os.map
 keymap.modkeys = modkeys_os.keys
 
 
+function keymap.active_modifiers()
+  for k, v in pairs(keymap.modkeys) do
+    if k ~= "shift" and (v ~= nil and v == true) then
+      return true
+    end
+  end
+  return false
+end
+
+
 ---Normalizes a stroke sequence to follow the modkeys table
 ---@param stroke string
 ---@return string

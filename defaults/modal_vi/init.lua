@@ -20,6 +20,13 @@ local function go_page_bottom()
 
 end
 
+local set_mode__orig = modal.set_mode
+function modal.set_mode(mode_id)
+  if mode_id then
+    set_mode__orig(mode_id)
+    modal.notify(mode_id, false)
+  end
+end
 
 
 local mode = { NOR = "NOR", INS = "INS", VIS = "VIS" }
