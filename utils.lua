@@ -5,18 +5,27 @@ local translate = require "core.doc.translate"
 
 local modal_utils = {}
 
+--- Get current document view
+-- @return document_view if any otherwise nil
 local function get_dv()
   return core.active_view
 end
 
+--- Get current document
+-- @return document if any otherwise nil
 local function get_doc()
   return get_dv().doc
 end
 
-
 modal_utils.get_doc = get_doc
 modal_utils.get_dv = get_dv
 
+--- Get sorted position
+-- @param line1 selection from line 
+-- @param col1 selection from column
+-- @param line2 selection to line
+-- @param col2 selection to column
+-- @treturn {number, number, number, number} selection but oredered
 function modal_utils.sort_positions(line1, col1, line2, col2)
   if line1 > line2 or line1 == line2 and col1 > col2 then
     return line2, col2, line1, col1, true
@@ -24,6 +33,9 @@ function modal_utils.sort_positions(line1, col1, line2, col2)
   return line1, col1, line2, col2, false
 end
 
+--- Multiline selection generator
+-- @param sort flag
+-- @return function generator
 function modal_utils.doc_multiline_selections(sort)
   if get_dv() == nil or get_doc() == nil or get_doc().get_selections == nil then return function() return nil end end
   local iter, state, idx, line1, col1, line2, col2 = get_doc():get_selections(sort)
@@ -37,6 +49,7 @@ function modal_utils.doc_multiline_selections(sort)
   end
 end
 
+--- ???
 function modal_utils.go_to_line()
   if get_dv() ~= nil and get_dv().modal ~= nil and get_dv().modal.current_command and get_dv().modal.current_command.n_repeat ~= '' and get_doc() ~= nil then
     local N = get_dv().modal.current_command.num
@@ -44,6 +57,7 @@ function modal_utils.go_to_line()
   end
 end
 
+--- Indent selection
 function modal_utils.indent()
   local docview = core.active_view and core.active_view.doc
   if docview then
@@ -56,6 +70,7 @@ function modal_utils.indent()
   end
 end
 
+--- Unindent selection
 function modal_utils.unindent()
   local docview = core.active_view and core.active_view.doc
   if docview then
@@ -68,12 +83,14 @@ function modal_utils.unindent()
   end
 end
 
+--- Remove selection
 function modal_utils.unselect()
   for idx, _, _, line2, col2 in modal_utils.doc_multiline_selections(true) do
     get_doc():set_selections(idx, line2, col2, line2, col2)
   end
 end
 
+--- Select line backward
 function modal_utils.select_LINE()
   for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
     local lobj = get_doc().highlighter:get_line(line2)
@@ -85,6 +102,7 @@ function modal_utils.select_LINE()
   end
 end
 
+--- Select line forward
 function modal_utils.select_line()
   for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
     local lobj = get_doc().highlighter:get_line(line2)
@@ -96,6 +114,7 @@ function modal_utils.select_line()
   end
 end
 
+--- Delete selections
 function modal_utils.delete()
   for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(true) do
     if line1 == line2 and col1 == col2 then
@@ -111,6 +130,7 @@ function modal_utils.delete()
   end
 end
 
+--- Select match inside selections
 function modal_utils.select_in_blob(document, line1, col1, line2, col2, text, opt)
   local results = {}
   local ok, l1, c1, l2, c2 = pcall(search.find, document, line1, col1, text, opt)
@@ -121,6 +141,7 @@ function modal_utils.select_in_blob(document, line1, col1, line2, col2, text, op
   return results
 end
 
+--- Split selection by matching text inside selections
 function modal_utils.split_in_blob(document, line1, col1, line2, col2, text, opt)
   local l0, c0 = line1, col1
   local results = {}
@@ -136,6 +157,7 @@ function modal_utils.split_in_blob(document, line1, col1, line2, col2, text, opt
   return results
 end
 
+--- Reset selections
 function modal_utils.reset_selections(document, selections)
   if selections then
     local _, l1, c1, l2, c2 = table.unpack(selections[1])
@@ -147,6 +169,7 @@ function modal_utils.reset_selections(document, selections)
   end
 end
 
+--- Actions perormed in multi selections
 function modal_utils.blob_action(document, text, fn, selections)
   if not text or #text == 0 then
     return nil
@@ -180,18 +203,21 @@ function modal_utils.blob_action(document, text, fn, selections)
   end
 end
 
+--- Jump to beginning of selection
 function modal_utils.go_to_selection_start()
   for idx, line1, col1, _, _ in modal_utils.doc_multiline_selections(true) do
     get_doc():set_selections(idx, line1, col1)
   end
 end
 
+--- Jump to end of selection
 function modal_utils.go_to_selection_end()
   for idx, _, _, line1, col1 in modal_utils.doc_multiline_selections(true) do
     get_doc():set_selections(idx, line1, col1)
   end
 end
 
+--- Concatenate t1 with t2 table but do not replace existing items from t2 
 function modal_utils.concat(t1, t2)
   for k, v in pairs(t1) do
     if t2[k] == nil then
@@ -201,6 +227,7 @@ function modal_utils.concat(t1, t2)
   return t2
 end
 
+--- Copy selections
 function modal_utils.copy()
   if get_doc() and get_doc().get_selection then
     local l1, c1, l2, c2 = get_doc():get_selection()
@@ -212,6 +239,7 @@ function modal_utils.copy()
   end
 end
 
+--- Paste text after selection
 function modal_utils.paste_after()
   -- TODO improve
   local text = system.get_clipboard()
@@ -232,6 +260,7 @@ function modal_utils.paste_after()
   end
 end
 
+--- Paste text before selection
 function modal_utils.paste_before()
   -- TODO improve
   local text = system.get_clipboard()
@@ -250,6 +279,7 @@ function modal_utils.paste_before()
   end
 end
 
+--- Retrieve last input (processed, so that S+a is actually A)
 function modal_utils.get_last_key()
   local view = get_dv()
   if view.modal then
@@ -258,6 +288,7 @@ function modal_utils.get_last_key()
   return nil
 end
 
+--- Replace selection with last input
 function modal_utils.replace()
   local view = get_dv()
   local last = modal_utils.get_last_key()
@@ -290,37 +321,10 @@ function modal_utils.replace()
   end
 end
 
+
+
+--- Extend selection until next character that match last input
 function modal_utils.select_next_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local _, _, l2, c2 = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, _, _, lnn, cnn = pcall(search.find, view.doc, l2, c2 + 1, last,
-        { wrap = false, regex = false, no_case = false, reverse = false })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn - 1, l2, c2)
-      end
-    end
-  end
-end
-
-function modal_utils.move_next_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local _, _, l2, c2 = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, _, _, lnn, cnn = pcall(search.find, view.doc, l2, c2 + 1, last,
-        { wrap = false, regex = false, no_case = false, reverse = false })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn - 1, lnn, cnn - 1)
-      end
-    end
-  end
-end
-
-function modal_utils.extend_next_char()
   local view = get_dv()
   local last = modal_utils.get_last_key()
   if last then
@@ -329,43 +333,15 @@ function modal_utils.extend_next_char()
       local ok, _, _, lnn, cnn = pcall(search.find, view.doc, l2, c2 + 1, last,
         { wrap = false, regex = false, no_case = false, reverse = false })
       if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn, l1, c1)
+        view.doc:set_selections(idx, lnn, cnn - 1, l1, c1)
       end
     end
   end
 end
 
+
+--- Extend selection until previous character that match last input
 function modal_utils.select_prev_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local l1, c1, _, _ = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, lnn, cnn, _, _ = pcall(search.find, view.doc, l1, c1, last,
-        { wrap = false, regex = false, no_case = false, reverse = true })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn, l1, c1)
-      end
-    end
-  end
-end
-
-function modal_utils.move_prev_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local l1, c1, _, _ = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, lnn, cnn, _, _ = pcall(search.find, view.doc, l1, c1, last,
-        { wrap = false, regex = false, no_case = false, reverse = true })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn, lnn, cnn)
-      end
-    end
-  end
-end
-
-function modal_utils.extend_prev_char()
   local view = get_dv()
   local last = modal_utils.get_last_key()
   if last then
@@ -380,37 +356,8 @@ function modal_utils.extend_prev_char()
   end
 end
 
+--- Extend selection until before next character that match last input 
 function modal_utils.select_till_next_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local _, _, l2, c2 = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, _, cnn, lnn, _ = pcall(search.find, view.doc, l2, c2 + 2, last,
-        { wrap = false, regex = false, no_case = false, reverse = false })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn - 1, l2, c2)
-      end
-    end
-  end
-end
-
-function modal_utils.move_till_next_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local _, _, l2, c2 = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, _, cnn, lnn, _ = pcall(search.find, view.doc, l2, c2 + 2, last,
-        { wrap = false, regex = false, no_case = false, reverse = false })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn - 1, lnn, cnn - 1)
-      end
-    end
-  end
-end
-
-function modal_utils.extend_till_next_char()
   local view = get_dv()
   local last = modal_utils.get_last_key()
   if last then
@@ -425,37 +372,8 @@ function modal_utils.extend_till_next_char()
   end
 end
 
+--- Extend selection until before previous character that match last input 
 function modal_utils.select_till_prev_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local l1, c1, _, _ = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, lnn, _, _, cnn = pcall(search.find, view.doc, l1, c1, last,
-        { wrap = false, regex = false, no_case = false, reverse = true })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn, l1, c1)
-      end
-    end
-  end
-end
-
-function modal_utils.move_till_prev_char()
-  local view = get_dv()
-  local last = modal_utils.get_last_key()
-  if last then
-    for idx, line1, col1, line2, col2 in modal_utils.doc_multiline_selections(false) do
-      local l1, c1, _, _ = modal_utils.sort_positions(line1, col1, line2, col2)
-      local ok, lnn, _, _, cnn = pcall(search.find, view.doc, l1, c1, last,
-        { wrap = false, regex = false, no_case = false, reverse = true })
-      if ok and lnn then
-        view.doc:set_selections(idx, lnn, cnn, lnn, cnn)
-      end
-    end
-  end
-end
-
-function modal_utils.extend_till_prev_char()
   local view = get_dv()
   local last = modal_utils.get_last_key()
   if last then
@@ -470,28 +388,31 @@ function modal_utils.extend_till_prev_char()
   end
 end
 
-
-
-local function is_non_word(char)
+--- check if char is a letter
+-- @return true if char is a latter; otherwise false
+local function is_non_letter(char)
   if char == nil then
     return false
   end
   return not ((char >= 'a' and char <= 'z') or (char >= 'A' and char <= 'Z'))
 end
 
-local function is_non_WORD(char)
+--- check if char is not a letter or a digit or a punctuation.
+-- @return true if char is a letter, a digit or a punctuation; otherwise false
+local function is_non_LETTER(char)
   if char == nil then
     return false
   end
   return not ((char >= ',' and char <= '.') or (char >= '_' and char <= 'z') or (char >= '?' and char <= 'Z') or char == ';' or char == ':' or char == '!')
 end
 
+--- find next word start
 function modal_utils.next_word_start(doc, line, col)
   local prev
   local end_line, end_col = translate.end_of_doc(doc, line, col)
   while line < end_line or col < end_col do
     local char = doc:get_char(line, col)
-    if not is_non_word(char) and is_non_word(prev) then
+    if not is_non_letter(char) and is_non_letter(prev) then
       break
     end
     line, col = doc:position_offset(line, col, 1)
@@ -500,6 +421,7 @@ function modal_utils.next_word_start(doc, line, col)
   return line, col
 end
 
+-- find next non whitespace character
 function modal_utils.next_non_ws(doc, line, col)
   local end_line, end_col = translate.end_of_doc(doc, line, col)
   while line < end_line or col < end_col do
@@ -512,12 +434,13 @@ function modal_utils.next_non_ws(doc, line, col)
   return line, col
 end
 
+-- find next letter/digit/punctuation word start
 function modal_utils.next_WORD_start(doc, line, col)
   local prev
   local end_line, end_col = translate.end_of_doc(doc, line, col)
   while line < end_line or col < end_col do
     local char = doc:get_char(line, col)
-    if not is_non_word(char) and is_non_WORD(prev) then
+    if not is_non_letter(char) and is_non_LETTER(prev) then
       break
     end
     line, col = doc:position_offset(line, col, 1)
@@ -526,17 +449,19 @@ function modal_utils.next_WORD_start(doc, line, col)
   return line, col
 end
 
+-- select up till next word start
 function modal_utils.select_to_next_word_start()
   local dv = get_dv()
   dv.doc:select_to(modal_utils.next_word_start, dv)
 end
 
+-- select up to next non white space character
 function modal_utils.select_to_next_non_ws()
   local dv = get_dv()
   dv.doc:select_to(modal_utils.next_non_ws, dv)
 end
 
-
+-- select up to next letter/digit/punctuation word start 
 function modal_utils.select_to_next_WORD_start()
   local dv = get_dv()
   dv.doc:select_to(modal_utils.next_WORD_start, dv)
