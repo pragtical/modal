@@ -169,6 +169,7 @@ To do so you can use **3 different syntaxes** (why? IDK), below some equivalence
 | `<space>wQ`  | `space w shfit+q` | `space w S+q` | 
 
 Notes that modal work with combination of keys (e.g. `ctrl+f`) and sequences (e.g `space f`) as well as combination of the two.
+To select wich style you use please refer to [[Load binding]] section.
 
 The sequences can be as long as wish but **the first combination matched will be executed.**
 
