@@ -2,14 +2,17 @@
 local modal = require "plugins.modal"
 local kb_modal = require "plugins.modal.bindings_models.modal"
 local mu = require "plugins.modal.utils"
+local movement = require "plugins.modal.defaults.modal_hx.movement"
+local bind_insert = require "plugins.modal.defaults.modal_hx.insert"
+local bind_lsp = require "plugins.modal.defaults.lsp"
 
 local core = require "core"
 local config = require "core.config"
 local command = require "core.command"
 
-require "plugins.modal.defaults.modal_hx.interface"
-
-
+---Helix preset state shared by the select and split prompts.
+---@class plugins.modal.hx
+---@field last_select string Most recent search pattern.
 local modal_hx = {}
 modal_hx.last_select = ""
 -- TODO implement registers
@@ -17,71 +20,44 @@ modal_hx.target_register = nil
 modal_hx.registers = {}
 
 local mode = { NOR = "NOR", INS = "INS", SEL = "SEL" }
+modal.mode_labels = { NOR = "NORMAL", INS = "INSERT", SEL = "SELECT" }
 
-local function search_select()
-  local selections = {}
-  for idx, line1, col1, line2, col2 in mu.doc_multiline_selections(false) do
-    table.insert(selections, { idx, line1, col1, line2, col2 })
+---Preview regex selections and restore their primary range on cancellation.
+---@param label string
+---@param action modal.search_action
+local function regex_prompt(label, action)
+  local doc = mu.get_doc()
+  local ranges = { primary = doc.last_selection }
+  for idx, l, c, a, b in doc:get_selections() do
+    ranges[idx] = { idx, l, c, a, b }
   end
-  local last_doc = mu.get_doc()
-  core.command_view:enter("select", {
+  core.command_view:enter(label, {
     text = modal_hx.last_select,
     select_text = true,
     show_suggestions = false,
-    submit = function(text, _)
+    submit = function(text)
       modal_hx.last_select = text
-      mu.blob_action(last_doc, text, mu.select_in_blob, selections)
+      mu.blob_action(doc, text, action, ranges)
     end,
-    cancel = function(_)
+    cancel = function()
       core.status_view:remove_tooltip()
-      mu.reset_selections(last_doc, selections)
+      mu.reset_selections(doc, ranges)
     end,
     suggest = function(text)
-      if text and #text > 0 then
-        mu.blob_action(last_doc, text, mu.select_in_blob, selections)
+      if text and text ~= "" then
+        mu.blob_action(doc, text, action, ranges)
       else
-        mu.reset_selections(last_doc, selections)
+        mu.reset_selections(doc, ranges)
       end
-    end
+    end,
   })
 end
 
-local function search_split()
-  local selections = {}
-  for idx, line1, col1, line2, col2 in mu.doc_multiline_selections(false) do
-    table.insert(selections, { idx, line1, col1, line2, col2 })
-  end
-  local last_doc = mu.get_doc()
-  core.command_view:enter("split", {
-    text = modal_hx.last_select,
-    select_text = true,
-    show_suggestions = false,
-    submit = function(text, _)
-      modal_hx.last_select = text
-      mu.blob_action(last_doc, text, mu.split_in_blob, selections)
-    end,
-    cancel = function(_)
-      core.status_view:remove_tooltip()
-      mu.reset_selections(last_doc, selections)
-    end,
-    suggest = function(text)
-      if text and #text > 0 then
-        core.log("Split %s", text)
-        mu.blob_action(last_doc, text, mu.split_in_blob, selections)
-      else
-        mu.reset_selections(last_doc, selections)
-      end
-    end
-  })
-end
+---Select the matches of a regular expression within the current selections.
+local function search_select() regex_prompt("select", mu.select_in_blob) end
 
-local set_mode__orig = modal.set_mode
-function modal.set_mode(mode_id)
-  if mode_id then
-    set_mode__orig(mode_id)
-    modal.notify(mode_id, false)
-  end
-end
+---Split the current selections on matches of a regular expression.
+local function search_split() regex_prompt("split", mu.split_in_blob) end
 
 modal.fns = {
   [mu.unselect] = "hx:unselect",
@@ -91,28 +67,15 @@ modal.fns = {
   [mu.indent] = "hx:indent",
   [mu.unindent] = "hx:unindent",
   [mu.replace] = "hx:replace",
-  [mu.go_to_line] = "hx:go-to-line",
   [mu.delete] = "hx:delete",
-  [mu.select_LINE] = "hx:select-LINE",
-  [mu.select_line] = "hx:select-line",
-  [mu.select_next_char] = "hx:select-next-character",
-  [mu.select_prev_char] = "hx:select-previous-character",
-  [mu.select_till_next_char] = "hx:select-till-next-character",
-  [mu.select_till_prev_char] = "hx:select-till-previous-character",
   [search_select] = "hx:search",
   [search_split] = "hx:split",
-  [mu.go_to_selection_start] = "hx:go-to-selection-start",
-  [mu.go_to_selection_end] = "hx:go-to-selection-end",
-  [mu.next_word_start] = "hx:move-to-next-word-start",
-  [mu.next_WORD_start] = "hx:move-to-next-WORD-start",
-  [mu.select_to_next_word_start] = "hx:select-to-next-word-start",
-  [mu.select_to_next_WORD_start] = "hx:select-to-next-WORD-start",
 }
 
 config.plugins.modal.base_mode = mode.NOR
 config.plugins.modal.modes = { mode.NOR, mode.INS, mode.SEL }
 
-local go_to_ins = modal.go_to_mode(mode.INS)
+config.plugins.modal.select_cursor = { NOR = true, SEL = true }
 local go_to_sel = modal.go_to_mode(mode.SEL)
 local go_to_nor = modal.go_to_mode(mode.NOR)
 
@@ -120,26 +83,14 @@ config.plugins.modal.keymaps = {
   NOR = {
     [":"] = "core:find-command",
     ["<return>"] = { "command:submit", "dialog:select" },
-    ["."] = "modal:redo",
     -- mode change
-    ["i"] = { mu.go_to_selection_start, go_to_ins },
-    ["I"] = { "doc:move-to-start-of-line", go_to_ins },
     ["v"] = go_to_sel,
-    ["O"] = { "doc:newline-above", mu.go_to_selection_start, go_to_ins },
-    ["o"] = { "doc:newline-below", mu.go_to_selection_start, go_to_ins },
-    ["a"] = { mu.go_to_selection_end, go_to_ins },
-    ["A"] = { "doc:move-to-end-of-line", mu.go_to_selection_start, go_to_ins },
     -- actions
     ["u"] = "doc:undo",
     ["U"] = "doc:redo",
-    ["p"] = mu.paste_after,
-    ["P"] = mu.paste_before,
-    ["y"] = mu.copy,
-    ["d"] = { mu.copy, mu.delete },
     ["J"] = "doc:join-lines",
     ["\\<"] = mu.unindent,
     [">"] = mu.indent,
-    ["r<.>"] = mu.replace,
     ["R"] = "doc:paste",
     -- search
     ["<space>/"] = "project-search:find",
@@ -148,48 +99,20 @@ config.plugins.modal.keymaps = {
     ["N"] = "find-replace:previous-find",
 
     -- movements
-    ["<left>"] = { mu.unselect, "doc:move-to-previous-char", "dialog:previous-entry" },
-    ["<right>"] = { mu.unselect, "doc:move-to-next-char", "dialog:next-entry" },
-    ["<up>"] = { mu.unselect, "command:select-previous", "doc:move-to-previous-line" },
-    ["<down>"] = { mu.unselect, "command:select-next", "doc:move-to-next-line" },
-    ["h"] = { mu.unselect, "doc:move-to-previous-char" },
-    ["l"] = { mu.unselect, "doc:move-to-next-char" },
-    ["k"] = { mu.unselect, "doc:move-to-previous-line" },
-    ["j"] = { mu.unselect, "doc:move-to-next-line" },
     ["<pageup>"] = { mu.unselect, "doc:move-to-previous-page" },
     ["<pagedown>"] = { mu.unselect, "doc:move-to-next-page" },
-    ["C-<left>"] = {mu.unselect, "movestory:prev"},
-    ["C-h"] = {mu.unselect, "movestory:prev"},
-    ["C-<right>"] = {mu.unselect, "movestory:next"},
-    ["C-l"] = {mu.unselect, "movestory:next"},
+    ["C-<left>"] = {mu.unselect, "navigate:previous"},
+    ["C-h"] = {mu.unselect, "navigate:previous"},
+    ["C-<right>"] = {mu.unselect, "navigate:next"},
+    ["C-l"] = {mu.unselect, "navigate:next"},
 
     -- movement + selection
-    ["x"] = mu.select_line,
-    ["X"] = mu.select_LINE,
-    ["w"] = { mu.unselect, "doc:select-to-next-word-end" },
-    ["W"] = { mu.unselect, "doc:select-to-next-WORD-end" },
-    ["e"] = { mu.unselect, "doc:select-to-next-word-end" },
-    ["E"] = { mu.unselect, "doc:select-to-next-WORD-end" },
-    ["b"] = { mu.unselect, "doc:select-to-previous-word-start" },
-    ["B"] = { mu.unselect, "doc:select-to-previous-WORD-start" },
-    ["f<.>"] = { mu.unselect, mu.select_next_char },
-    ["F<.>"] = { mu.unselect, mu.select_prev_char },
-    ["t<.>"] = { mu.unselect, mu.select_till_next_char },
-    ["T<.>"] = { mu.unselect, mu.select_till_prev_char },
-    ["G"] = mu.go_to_line ,
     ["%"] = "doc:select-all",
 
     -- multi cursors and selections
-    ["C"] = "doc:create-cursor-next-line",
-    [","] = "doc:select-none", -- slighty different then hx
     ["s"] = search_select,
     ["S"] = search_split,
     -- Go To
-    ["gh"] = { mu.unselect, "doc:move-to-start-of-line" },
-    ["g_"] = { mu.unselect, "doc:move-to-start-of-line", mu.move_to_next_non_ws },
-    ["gl"] = { mu.unselect, "doc:move-to-end-of-line" },
-    ["gg"] = { mu.unselect, "doc:move-to-start-of-doc" },
-    ["ge"] = { mu.unselect, "doc:move-to-end-of-doc" },
     ["g:"] = { mu.unselect, "doc:go-to-line" },
 
     -- match
@@ -204,19 +127,19 @@ config.plugins.modal.keymaps = {
     -- end, "macro:toggle-record" },
     -- search
     -- FILE operations
-    ["<space>f"] = "core:find-project-file",
+    ["<space>f"] = "core:find-file",
     ["<space>F"] = "core:open-file",
     ["<space>p"] = "core:change-project-folder",
     ["<space>P"] = "core:open-project-folder",
-    ["<space>b"] = "buffer:picker", -- need plugin tab-switcher
+    ["<space>b"] = "tab-switcher:tab-list",
     ["<space>c"] = "doc:toggle-line-comments",
     ["C-c"] = "doc:toggle-line-comments",
 
     -- WINDOWS operations
-    ["<f11>"] = "core:toogle-full-screen",
+    ["<f11>"] = "core:toggle-fullscreen",
     ["<space>wv"] = { "root:split-right", "root:switch-to-right" },
     ["<space>ws"] = { "root:split-down", "root:switch-to-down" },
-    ["<space>wq"] = "root:close-node",
+    ["<space>wq"] = "root:close",
     ["<space>wQ"] = "core:quit",
     ["<space>w<left>"] = "root:switch-to-left",
     ["<space>w<right>"] = "root:switch-to-right",
@@ -225,69 +148,25 @@ config.plugins.modal.keymaps = {
     ["<space>w+"] = "root:grow",
     ["<space>w-"] = "root:shrink",
 
-    -- LITE
+    -- PRAGTICAL
     ["<space>\\"] = "treeview:toggle",
-    ["<space>ll"] = "core:open-log",
-    ["<space>lL"] = "log:open-as-doc",
-    ["<space>lu"] = "core:open-user-module",
-    ["<space>lr"] = "core:reload-module",
-    ["<space>lR"] = "core:restart",
-    ["<space>ls"] = "ui:settings",
+    ["<space>el"] = "core:open-log",
+    ["<space>eL"] = "log:open-as-doc",
+    ["<space>eu"] = "core:open-user-module",
+    ["<space>er"] = "core:reload-module",
+    ["<space>eR"] = "core:restart",
+    ["<space>es"] = "ui:settings",
 
     -- HX
     ["<space>?"] = "modal:help",
 
-    -- LSP (Require lintplus and LSP plugins)
-    ["<space>k"] = "lsp:show-symbol-info",
-    ["<space>r"] = "lsp:rename-symbol",
-    ["<space>D"] = "lsp:view-all-diagnostics",
-    ["<space>d"] = "lsp:view-document-diagnostics",
-    ["<space>S"] = "lsp:find-workspace-symbol",
-    ["<space>s"] = "lsp:view-document-symbols",
-    -- Go To(LSP)
-    ["gd"] = "lsp:goto-definition",
-    ["gi"] = "lsp:goto-implementation",
-    ["gr"] = "lsp:find-references",
   },
-  INS = {
-    ["<ESC>"] = go_to_nor,
-  },
+  INS = {},
   SEL = {
-    ["i"] = { mu.go_to_selection_start, mu.go_to_ins },
     ["v"] = go_to_nor,
     ["<ESC>"] = go_to_nor,
   },
 }
-
-local sel_movements = {
-  ["<left>"] = { "doc:select-to-previous-char", "dialog:previous-entry" },
-  ["<right>"] = { "doc:select-to-next-char", "dialog:next-entry" },
-  ["<up>"] = { "command:select-previous", "doc:select-to-previous-line" },
-  ["<down>"] = { "command:select-next", "doc:select-to-next-line" },
-  ["h"] = { "doc:select-to-previous-char" },
-  ["l"] = { "doc:select-to-next-char" },
-  ["k"] = { "doc:select-to-previous-line" },
-  ["j"] = { "doc:select-to-next-line" },
-  ["<pageup>"] = { "doc:select-to-previous-page" },
-  ["<pagedown>"] = { "doc:select-to-next-page" },
-
-  -- movement + selection
-  ["w"] = { "doc:select-to-next-word-end" },
-  ["W"] = { "doc:select-to-next-WORD-end" },
-  ["e"] = { "doc:select-to-next-word-end" },
-  ["E"] = { "doc:select-to-next-WORD-end" },
-  ["b"] = { "doc:select-to-previous-word-start" },
-  ["B"] = { "doc:select-to-previous-WORD-start" },
-  ["f<.>"] = mu.select_next_char,
-  ["F<.>"] = mu.select_prev_char,
-  ["t<.>"] = mu.select_till_next_char,
-  ["T<.>"] = mu.select_till_prev_char,
-  [","] = nil
-}
-
-config.plugins.modal.keymaps.SEL = mu.concat(config.plugins.modal.keymaps.NOR,
-  config.plugins.modal.keymaps.SEL)
-config.plugins.modal.keymaps.SEL = mu.concat(config.plugins.modal.keymaps.SEL, sel_movements)
 
 config.plugins.modal.carets.NOR = modal.caret_style.BAR
 config.plugins.modal.carets.INS = modal.caret_style.NORMAL
@@ -295,31 +174,27 @@ config.plugins.modal.carets.SEL = modal.caret_style.BAR
 
 config.plugins.modal.on_key_callbacks.NOR = modal.on_key_command_only
 config.plugins.modal.on_key_callbacks.SEL = modal.on_key_command_only
-config.plugins.modal.on_key_callbacks.INS = modal.on_key_passtrought
+config.plugins.modal.on_key_callbacks.INS = modal.on_key_passthrough
 
 
+---Next-key captions shared by Helix Normal and Select modes.
+---@type modal.helpers
 local helpers = {
   ["<space>"] = {
     { "f",  "open project file picker" },
     { "F",  "open file picker" },
     { "p",  "change project folder" },
     { "P",  "open project folder" },
-    { "b",  "open buffer picker" },
-    { "s",  "show symbol picker" },
-    { "S",  "show project symbol picer" },
-    { "d",  "show document diagnostic picker" },
-    { "D",  "show project diagnostic picker" },
-    { "w",  "window mode" },
-    { "k",  "show symbol information" },
-    { "r",  "rename symbol" },
+    { "b",  "switch to an open tab" },
+    { "w",  "Windows" },
     { "c",  "comment line" },
     { "\\", "toggle project tree" },
-    { "l",  "lite-xl mode" },
+    { "e",  "Editor" },
     { "?",  "show keymap" },
   },
   ["<space>w"] = {
     { "q",     "close view" },
-    { "Q",     "quit Lite XL" },
+    { "Q",     "quit Pragtical" },
     { "v",     "vertical right split" },
     { "s",     "horizontal down split" },
     { "left",  "jump to left split" },
@@ -329,14 +204,13 @@ local helpers = {
     { "+",     "grow view" },
     { "-",     "shrink view" }
   },
-  ["<space>l"] = {
-
+  ["<space>e"] = {
     { "l", "open log" },
     { "L", "open log as doc" },
     { "u", "open user module" },
     { "s", "open UI settings" },
     { "r", "reload a module" },
-    { "R", "restart lite-xl" },
+    { "R", "restart Pragtical" },
   },
   ["g"] = {
     { "g", "Goto file start" },
@@ -344,21 +218,62 @@ local helpers = {
     { "h", "Goto line start" },
     { "l", "Goto line end" },
     { "_", "Goto first character of line" },
-    { "d", "Goto definition" },
-    { "i", "Goto implementation" },
-    { "r", "Goto references" },
     { ":", "Goto line" },
   },
   ["m"] = {
-    { "m", "Goto matching braket" },
-    { "s", "Select to matching brakets" },
+    { "m", "Go to matching bracket" },
+    { "s", "Select to matching bracket" },
   }
 }
 
+---Reduce each selection to its own block cursor.
+local function collapse()
+  local doc = core.active_view.doc
+  for idx in doc:get_selections() do
+    local l, c = modal.selection.characters(doc, idx)
+    modal.selection.set_characters(doc, idx, l, c, l, c)
+  end
+end
+
+---Keep only the primary range.
+local function keep_primary()
+  local doc = core.active_view.doc
+  doc:set_selection(doc:get_selection())
+  modal.set_mode("NOR")
+end
+
+modal.fns[collapse] = "Collapse selections"
+modal.fns[keep_primary] = "Keep primary selection"
+modal.fns[modal.selection.copy_below] = "Copy selections to next line"
+local maps = config.plugins.modal.keymaps
+bind_lsp(maps.NOR, helpers, "<space>")
+mu.concat(maps.NOR, maps.SEL)
+maps.SEL["<pageup>"] = "doc:select-to-previous-page"
+maps.SEL["<pagedown>"] = "doc:select-to-next-page"
+bind_insert(maps)
+for _, id in ipairs({ "NOR", "SEL" }) do
+  local map = maps[id]
+  for _, key in ipairs({
+    "h", "j", "k", "l", "<left>", "<right>", "<up>", "<down>",
+    "w", "W", "b", "B", "e", "E", "f<.>", "F<.>", "t<.>", "T<.>",
+    "gh", "gl", "gg", "ge", "g_", "G", "x", "X",
+  }) do
+    map[key] = movement(key, id == "SEL")
+  end
+  map[";"], map[","] = collapse, keep_primary
+  map.C = modal.with_count(modal.selection.copy_below)
+  map.p = { mu.paste_after, go_to_nor }
+  map.P = { mu.paste_before, go_to_nor }
+  map.y = { mu.copy, go_to_nor }
+  map.d = { mu.copy, mu.delete, go_to_nor }
+  map.c = { mu.copy, mu.delete, map.i }
+  map["r<.>"] = { mu.replace, go_to_nor }
+end
 config.plugins.modal.helpers.NOR = helpers
 config.plugins.modal.helpers.SEL = helpers
 
-command.add(nil, {
+command.add(function() return modal.active_preset == "hx"
+  and config.plugins.modal.enabled end, {
   ["w"] = function() command.perform "doc:save" end,
   ["wq"] = function()
     command.perform "doc:save"
@@ -368,6 +283,6 @@ command.add(nil, {
 
 })
 
-modal.load_bindings(kb_modal)
+modal.load_bindings(kb_modal, nil, "hx")
 
 return modal_hx

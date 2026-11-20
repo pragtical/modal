@@ -1,4 +1,5 @@
 local core = require "core"
+local command = require "core.command"
 local common = require "core.common"
 local config = require "core.config"
 local keymap = require "core.keymap"
@@ -6,26 +7,30 @@ local style = require "core.style"
 local View = require "core.view"
 
 
-local item_height_result = {}
-
-
-local function get_item_height(item)
-  local h = item_height_result[item]
-  if not h then
-    h = {}
-    h.normal = style.code_font:get_height() + style.padding.y
-    h.current = h.normal
-    h.target = h.current
-    item_height_result[item] = h
-  end
-  return h
+---Measure one help row in screen pixels.
+---@return number
+local function row_height()
+  return style.code_font:get_height() + style.padding.y
 end
 
 
+---Yield the formatted row followed by its screen rectangle in pixels.
+---@alias modal.help_iterator fun():string?, number, number, number, number
+
+---Scrollable tab displaying the active mode's compiled bindings.
+---@class modal.keymapview : core.view
+---@overload fun(mode?: string, helpers?: modal.help_row[]): modal.keymapview
+---@field super core.view
+---@field mode string Display name of the mode shown in this tab.
+---@field helpers modal.help_row[] Ordered binding and description pairs.
+---@field padding integer Width of the key column in bytes.
 local KeyMapView = View:extend()
 
 
 
+---Create the help tab and measure the width of its key column.
+---@param mode? string Display name.
+---@param helpers? modal.help_row[]
 function KeyMapView:new(mode, helpers)
   KeyMapView.super.new(self)
   self.helpers = helpers
@@ -43,13 +48,18 @@ function KeyMapView:new(mode, helpers)
     self.mode = ""
   end
   self.scrollable = true
-  self.yoffset = 0
 end
 
+---Get the tab title for the displayed mode.
+---@return string
 function KeyMapView:get_name()
   return "Keymap " .. self.mode
 end
 
+---Right-pad a key sequence to the common key-column width.
+---@param str string
+---@param pad integer
+---@return string
 local function spaced(str, pad)
   local res = str
   if #str < pad then
@@ -60,37 +70,45 @@ local function spaced(str, pad)
   return res
 end
 
+---Iterate formatted help rows and their on-screen rectangles.
+---@return modal.help_iterator
 function KeyMapView:each_item()
   local x, y = self:get_content_offset()
-  y = y + style.padding.y + self.yoffset
+  y = y + style.padding.y
+  local h = row_height()
   return coroutine.wrap(function()
     for _, v in ipairs(self.helpers) do
       local item = spaced(v[1], self.padding) .. ": " .. v[2]
-      local h = get_item_height(item).current
       coroutine.yield(item, x, y, self.size.x, h)
       y = y + h
     end
   end)
 end
 
+---Get the scrollable content height, honoring the host's scroll-past-end
+---setting.
+---@return number pixels
 function KeyMapView:get_scrollable_size()
-  local _, y_off = self:get_content_offset()
-  local last_y, last_h = 0, 0
-  for _, _, y, _, h in self:each_item() do
-    last_y, last_h = y, h
+  local count = #self.helpers
+  if count == 0 then return 0 end
+  if config.scroll_past_end then
+    return style.padding.y + (count - 1) * row_height() + self.size.y
   end
-  if not config.scroll_past_end then
-    return last_y + last_h - y_off + style.padding.y
-  end
-  return last_y + self.size.y - y_off
+  return 2 * style.padding.y + count * row_height()
 end
 
+---Handle scrollbar clicks and Ctrl-click to copy a binding to the clipboard.
+---@param button string
+---@param px number
+---@param py number
+---@param clicks integer
+---@return boolean handled
 function KeyMapView:on_mouse_pressed(button, px, py, clicks)
   if KeyMapView.super.on_mouse_pressed(self, button, px, py, clicks) then
     return true
   end
 
-  local index, selected
+  local selected
   for item, x, y, w, h in self:each_item() do
     if px >= x and py >= y and px < x + w and py < y + h then
       selected = item
@@ -100,44 +118,18 @@ function KeyMapView:on_mouse_pressed(button, px, py, clicks)
 
   if selected then
     if keymap.modkeys["ctrl"] then
-      system.set_clipboard(core.get_log(selected))
-      core.status_view:show_message("i", style.text, "copied entry #" .. index .. " to clipboard.")
+      system.set_clipboard(selected)
+      core.status_view:show_message(
+        "i", style.text, "Copied binding to clipboard.")
     end
   end
 
   return true
 end
 
-function KeyMapView:update()
-  local item = core.log_items[#core.log_items]
-  if self.last_item ~= item then
-    local lh = style.code_font:get_height() + style.padding.y
-    if 0 < self.scroll.to.y then
-      local index = #core.log_items
-      while index > 1 and self.last_item ~= core.log_items[index] do
-        index = index - 1
-      end
-      local diff_index = #core.log_items - index
-      self.scroll.to.y = self.scroll.to.y + diff_index * lh
-      self.scroll.y = self.scroll.to.y
-    else
-      self.yoffset = -lh
-    end
-    self.last_item = item
-  end
-
-
-  self:move_towards("yoffset", 0, nil, "keymap")
-
-  KeyMapView.super.update(self)
-end
-
--- this is just to get a date string that's consistent
+---Draw visible keymap rows and the native scrollbar.
 function KeyMapView:draw()
   self:draw_background(style.background)
-
-  local th = style.code_font:get_height()
-  local lh = th + style.padding.y -- for one line
 
   for item, x, y, w, h in self:each_item() do
     if y + h >= self.position.y and y <= self.position.y + self.size.y then
@@ -147,11 +139,29 @@ function KeyMapView:draw()
 
       w = w - (x - self:get_content_offset())
 
-      common.draw_text(style.code_font, style.text, item, "left", x, y, w, lh)
+      common.draw_text(style.code_font, style.text, item, "left", x, y, w, h)
       core.pop_clip_rect()
     end
   end
   KeyMapView.super.draw_scrollbar(self)
 end
+
+---Scroll the help tab vertically by a signed number of rows.
+---@param view modal.keymapview
+---@param rows integer
+local function scroll_rows(view, rows)
+  view.scroll.to.y = view.scroll.to.y + rows * row_height()
+  view:clamp_scroll_position()
+end
+
+command.add(KeyMapView, {
+  ["modal:scroll-help-up"] = function(view) scroll_rows(view, -1) end,
+  ["modal:scroll-help-down"] = function(view) scroll_rows(view, 1) end,
+})
+
+keymap.add {
+  ["up"] = "modal:scroll-help-up",
+  ["down"] = "modal:scroll-help-down",
+}
 
 return KeyMapView

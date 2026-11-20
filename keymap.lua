@@ -1,3 +1,5 @@
+---Track host modifiers and construct the strokes used for modal lookup.
+---@class plugins.modal.keymap
 local keymap = {}
 
 
@@ -7,9 +9,11 @@ local modkeys_os = require("core.modkeys-" .. (macos and "macos" or "generic"))
 
 local modkey_map = modkeys_os.map
 
-keymap.modkeys = modkeys_os.keys
+keymap.modkeys = { table.unpack(modkeys_os.keys) }
 
 
+---Check whether a modifier other than Shift is held.
+---@return boolean
 function keymap.active_modifiers()
   for k, v in pairs(keymap.modkeys) do
     if k ~= "shift" and (v ~= nil and v == true) then
@@ -20,7 +24,7 @@ function keymap.active_modifiers()
 end
 
 
----Normalizes a stroke sequence to follow the modkeys table
+---Order the modifiers of one stroke using the platform's modifier precedence.
 ---@param stroke string
 ---@return string
 function keymap.normalize_stroke(stroke)
@@ -40,7 +44,7 @@ function keymap.normalize_stroke(stroke)
   return table.concat(stroke_table, "+")
 end
 
----Generates a stroke sequence including currently pressed mod keys.
+---Combine a key name with the currently pressed modifiers.
 ---@param key string
 ---@return string
 function keymap.key_to_stroke(key)
@@ -53,6 +57,8 @@ function keymap.key_to_stroke(key)
   return keymap.normalize_stroke(table.concat(keys, "+"))
 end
 
+---Clear the pressed state for a physical modifier key.
+---@param k string
 function keymap.released_modifiers(k)
   local mk = modkey_map[k]
   if mk then
@@ -60,6 +66,9 @@ function keymap.released_modifiers(k)
   end
 end
 
+---Record a physical modifier press, including the AltGr workaround.
+---@param k string
+---@return boolean handled True for a recognized modifier.
 function keymap.pressed_modifiers(k)
   local mk = modkey_map[k]
   if mk then
@@ -83,6 +92,11 @@ keymap.non_text_keys = {
   ["pagedown"] = true,
   ["home"] = true,
   ["return"] = true,
+  ["end"] = true,
+  ["tab"] = true,
+  ["delete"] = true,
+  ["backspace"] = true,
+  ["insert"] = true,
 }
 
 return keymap

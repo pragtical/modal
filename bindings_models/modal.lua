@@ -1,3 +1,5 @@
+---Compile Helix-style keys and modifiers into native strokes.
+---@class plugins.modal.model.modal : modal.model
 local kb_modal = {}
 
 local shift_keys = {
@@ -25,6 +27,11 @@ local shift_keys = {
   ["?"] = "/",
 }
 
+kb_modal.shifted_symbols = {}
+for symbol, key in pairs(shift_keys) do
+  kb_modal.shifted_symbols[key] = symbol
+end
+
 local key_mapping = {
   ['<ESC>'] = 'escape',
   ['<space>'] = 'space',
@@ -46,16 +53,23 @@ local mods = {
   ['gui'] = false,
 }
 
+---Clear the pending modifier flags after consuming a stroke.
 local function reinitialise_mod()
   for key, _ in pairs(mods) do
     mods[key] = false
   end
 end
 
+---Test for an uppercase ASCII letter.
+---@param ch string
+---@return boolean
 local function is_capital(ch)
   return #ch == 1 and ch >= 'A' and ch <= 'Z'
 end
 
+---Translate one notation token and consume its pending modifiers.
+---@param str string
+---@return string stroke
 local function process(str)
   if #str == 0 then
     return ''
@@ -82,6 +96,10 @@ local function process(str)
   return res .. str
 end
 
+---Append a nonempty stroke to the space-separated result.
+---@param res string
+---@param key string
+---@return string
 local function append(res, key)
   if #key == 0 then
     return res
@@ -93,6 +111,10 @@ local function append(res, key)
   end
 end
 
+---Compile adjacent keys, modifier prefixes and angle-bracket key names into
+---native strokes.
+---@param str string
+---@return string strokes
 function kb_modal.convert(str)
   local subs = ''
   local res = ''

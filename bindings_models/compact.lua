@@ -17,8 +17,13 @@ local key_mapping = {
   ['M+'] = 'gui+'
 }
 
+---Compile the space-separated notation used by the Vi and example presets.
+---@class plugins.modal.model.compact : modal.model
 local kb_compact = {}
 
+---Expand compact C+, S+, A+ and M+ modifiers in a space-separated sequence.
+---@param str string
+---@return string strokes
 function kb_compact.convert(str)
   local res = ''
   local prev = str:sub(1, 1)
